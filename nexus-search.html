@@ -1,0 +1,2278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Search</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Exo+2:ital,wght@0,200;0,300;0,400;0,500;0,600;1,300&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+/* ===== VARIABLES & RESET ===== */
+:root {
+  --bg: #050810;
+  --bg2: #080d1a;
+  --glass: rgba(8,14,30,0.75);
+  --glass-light: rgba(20,30,60,0.5);
+  --border: rgba(0,245,212,0.18);
+  --border-purple: rgba(155,93,229,0.25);
+  --cyan: #00f5d4;
+  --purple: #9b5de5;
+  --pink: #f72585;
+  --gold: #ffd60a;
+  --text: #e0eeff;
+  --text-dim: #5a7090;
+  --text-mid: #8899bb;
+  --glow-c: 0 0 18px rgba(0,245,212,0.5);
+  --glow-p: 0 0 18px rgba(155,93,229,0.5);
+  --glow-pk: 0 0 18px rgba(247,37,133,0.4);
+  --radius: 14px;
+  --radius-sm: 8px;
+  --radius-lg: 24px;
+  --tr: all 0.28s cubic-bezier(0.4,0,0.2,1);
+  --header-h: 62px;
+  --footer-h: 38px;
+  --font-d: 'Orbitron', monospace;
+  --font-b: 'Exo 2', sans-serif;
+  --font-m: 'Share Tech Mono', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-b);
+  min-height: 150vh;
+  overflow-x: hidden;
+  cursor: none;
+  transition: background 0.5s;
+}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--cyan); border-radius: 3px; }
+button { cursor: none; border: none; background: none; color: inherit; font-family: inherit; }
+input, select, textarea { font-family: var(--font-b); color: var(--text); outline: none; }
+img { display: block; }
+a { color: var(--cyan); text-decoration: none; }
+
+/* ===== BACKGROUND ===== */
+#bg-canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+.bg-aurora {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 50% at 20% 40%, rgba(0,245,212,0.07) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 60% at 80% 30%, rgba(155,93,229,0.07) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 40% at 60% 80%, rgba(247,37,133,0.04) 0%, transparent 70%);
+  animation: aurora 12s ease-in-out infinite alternate;
+}
+.bg-grid {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(0,245,212,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,245,212,0.025) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+@keyframes aurora {
+  0% { opacity: 0.7; transform: scale(1) rotate(0deg); }
+  50% { opacity: 1; }
+  100% { opacity: 0.8; transform: scale(1.05) rotate(2deg); }
+}
+
+/* ===== CUSTOM CURSOR ===== */
+#cursor-ring {
+  position: fixed; z-index: 99999; pointer-events: none;
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 2px solid var(--cyan);
+  transform: translate(-50%,-50%);
+  transition: width 0.15s, height 0.15s, opacity 0.15s, border-color 0.15s;
+  box-shadow: var(--glow-c); opacity: 0;
+}
+#cursor-dot {
+  position: fixed; z-index: 99999; pointer-events: none;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--cyan); transform: translate(-50%,-50%);
+  box-shadow: var(--glow-c); opacity: 0;
+  transition: transform 0.1s, background 0.15s;
+}
+body:hover #cursor-ring, body:hover #cursor-dot { opacity: 1; }
+body.cursor-click #cursor-dot { transform: translate(-50%,-50%) scale(2); }
+body.cursor-hover #cursor-ring { width: 50px; height: 50px; border-color: var(--purple); box-shadow: var(--glow-p); }
+
+/* ===== LOADING SCREEN ===== */
+#loading-screen {
+  position: fixed; inset: 0; z-index: 9999;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 20px;
+  transition: opacity 0.6s, visibility 0.6s;
+}
+#loading-screen.out { opacity: 0; visibility: hidden; }
+.loader-hex {
+  font-size: 56px; color: var(--cyan);
+  animation: hex-spin 2s linear infinite;
+  text-shadow: var(--glow-c);
+  filter: drop-shadow(0 0 20px var(--cyan));
+}
+@keyframes hex-spin { 0%{transform:rotate(0deg) scale(1)} 50%{transform:rotate(180deg) scale(1.1)} 100%{transform:rotate(360deg) scale(1)} }
+.loader-title { font-family: var(--font-d); font-size: 28px; font-weight: 900; letter-spacing: 10px; color: var(--text); }
+.loader-title span { color: var(--cyan); }
+.loader-bar-wrap { width: 220px; height: 3px; background: rgba(0,245,212,0.15); border-radius: 2px; overflow: hidden; }
+.loader-bar { height: 100%; background: linear-gradient(90deg, var(--cyan), var(--purple)); border-radius: 2px; width: 0; animation: load-fill 2s ease forwards; }
+@keyframes load-fill { 0%{width:0} 60%{width:80%} 100%{width:100%} }
+.loader-status { font-family: var(--font-m); font-size: 12px; color: var(--text-dim); letter-spacing: 3px; animation: flicker 0.8s infinite alternate; }
+@keyframes flicker { from{opacity:0.5} to{opacity:1} }
+
+/* ===== HEADER ===== */
+header {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: var(--header-h);
+  display: grid; grid-template-columns: 1fr auto 1fr;
+  align-items: center; padding: 0 16px;
+  background: rgba(5,8,16,0.8);
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 2px 30px rgba(0,0,0,0.5);
+}
+.header-right { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+
+/* ===== WEATHER WIDGET ===== */
+#weather-widget {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--glass); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 7px 14px;
+  cursor: none; transition: var(--tr);
+  max-width: 280px;
+}
+#weather-widget:hover { border-color: var(--cyan); box-shadow: var(--glow-c); }
+.weather-icon { font-size: 22px; }
+.weather-info { display: flex; flex-direction: column; }
+.weather-temp { font-family: var(--font-d); font-size: 14px; color: var(--cyan); font-weight: 700; }
+.weather-loc { font-size: 11px; color: var(--text-dim); font-family: var(--font-m); letter-spacing: 1px; }
+.weather-desc { font-size: 11px; color: var(--text-mid); }
+.weather-extra { font-size: 10px; color: var(--text-dim); }
+#weather-btn-refresh { font-size: 12px; color: var(--text-dim); padding: 4px; transition: var(--tr); }
+#weather-btn-refresh:hover { color: var(--cyan); transform: rotate(180deg); }
+
+/* ===== HEADER CENTER ===== */
+.header-logo { font-family: var(--font-d); font-size: 18px; font-weight: 900; letter-spacing: 4px; text-align: center; }
+.header-logo span { color: var(--cyan); text-shadow: var(--glow-c); }
+
+/* ===== ICON BUTTONS (HEADER) ===== */
+.icon-btn {
+  width: 40px; height: 40px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--glass); border: 1px solid var(--border);
+  font-size: 18px; transition: var(--tr); position: relative;
+}
+.icon-btn:hover { border-color: var(--cyan); box-shadow: var(--glow-c); transform: translateY(-1px); }
+.icon-btn.active { border-color: var(--cyan); background: rgba(0,245,212,0.1); }
+
+/* ===== PROFILE ICON ===== */
+#profile-btn { position: relative; }
+.profile-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  border: 2px solid var(--cyan); background: linear-gradient(135deg, var(--purple), var(--cyan));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; font-family: var(--font-d);
+  overflow: hidden; color: var(--bg);
+}
+.profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+/* ===== PROFILE DROPDOWN ===== */
+#profile-panel {
+  position: fixed; top: calc(var(--header-h) + 8px); right: 12px;
+  width: 220px; background: var(--glass); backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px; z-index: 200;
+  display: flex; flex-direction: column; gap: 6px;
+  transform: translateY(-10px) scale(0.95); opacity: 0;
+  pointer-events: none; transition: var(--tr);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+}
+#profile-panel.open { transform: none; opacity: 1; pointer-events: auto; }
+.profile-panel-head {
+  display: flex; align-items: center; gap: 10px; padding-bottom: 10px;
+  border-bottom: 1px solid var(--border); margin-bottom: 4px;
+}
+.profile-panel-name { font-family: var(--font-d); font-size: 12px; color: var(--cyan); }
+.profile-panel-item {
+  padding: 8px 10px; border-radius: var(--radius-sm);
+  font-size: 13px; transition: var(--tr); display: flex; align-items: center; gap: 8px;
+}
+.profile-panel-item:hover { background: rgba(0,245,212,0.08); color: var(--cyan); }
+
+/* ===== WAFFLE PANEL ===== */
+#waffle-btn { font-size: 20px; }
+#waffle-panel {
+  position: fixed; top: calc(var(--header-h) + 8px); right: 60px;
+  width: 360px; background: var(--glass); backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 16px; z-index: 200;
+  transform: translateY(-12px) scale(0.95); opacity: 0;
+  pointer-events: none; transition: var(--tr);
+  box-shadow: 0 12px 60px rgba(0,0,0,0.7);
+  max-height: 500px; overflow-y: auto;
+}
+#waffle-panel.open { transform: none; opacity: 1; pointer-events: auto; }
+.waffle-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border);
+}
+.waffle-header-title { font-family: var(--font-d); font-size: 12px; color: var(--cyan); letter-spacing: 3px; }
+.waffle-add-btn {
+  font-size: 11px; padding: 4px 10px; border-radius: 6px;
+  border: 1px solid var(--border); background: rgba(0,245,212,0.08);
+  color: var(--cyan); transition: var(--tr);
+}
+.waffle-add-btn:hover { background: rgba(0,245,212,0.15); box-shadow: var(--glow-c); }
+#waffle-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; }
+.waffle-app {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  padding: 10px 4px; border-radius: var(--radius-sm);
+  border: 1px solid transparent; transition: var(--tr);
+  position: relative; cursor: none;
+}
+.waffle-app:hover { background: rgba(0,245,212,0.06); border-color: var(--border); }
+.waffle-app img { width: 32px; height: 32px; border-radius: 6px; object-fit: contain; }
+.waffle-app-icon-placeholder { width: 32px; height: 32px; border-radius: 6px; background: var(--glass-light); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.waffle-app span { font-size: 10px; color: var(--text-mid); text-align: center; line-height: 1.2; max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.waffle-app-remove {
+  position: absolute; top: 2px; right: 2px;
+  width: 16px; height: 16px; border-radius: 50%; background: var(--pink);
+  font-size: 10px; color: white; display: none;
+  align-items: center; justify-content: center; line-height: 1;
+  opacity: 0; transition: var(--tr);
+}
+.waffle-app:hover .waffle-app-remove { display: flex; opacity: 1; }
+.waffle-app-remove:hover { transform: scale(1.2); }
+/* add app item */
+.waffle-app-add { border: 1px dashed var(--border); }
+.waffle-app-add .waffle-app-icon-placeholder { background: transparent; font-size: 22px; color: var(--text-dim); }
+
+/* ===== ADD APP MODAL ===== */
+#add-app-modal {
+  position: fixed; inset: 0; z-index: 500;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+  opacity: 0; pointer-events: none; transition: var(--tr);
+}
+#add-app-modal.open { opacity: 1; pointer-events: auto; }
+.add-app-box {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 24px; width: 360px;
+  box-shadow: 0 20px 80px rgba(0,0,0,0.8);
+}
+.add-app-box h3 { font-family: var(--font-d); font-size: 14px; color: var(--cyan); margin-bottom: 16px; letter-spacing: 2px; }
+.field-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.field-group label { font-size: 12px; color: var(--text-dim); }
+.glass-input {
+  background: var(--glass); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 10px 14px; color: var(--text); font-family: var(--font-b); font-size: 13px;
+  transition: var(--tr); width: 100%;
+}
+.glass-input:focus { border-color: var(--cyan); box-shadow: 0 0 0 2px rgba(0,245,212,0.1); }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+.btn-primary {
+  padding: 8px 18px; border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--cyan), var(--purple));
+  color: var(--bg); font-family: var(--font-d); font-size: 11px; font-weight: 700;
+  letter-spacing: 1px; transition: var(--tr);
+}
+.btn-primary:hover { opacity: 0.85; transform: translateY(-1px); box-shadow: var(--glow-c); }
+.btn-secondary {
+  padding: 8px 18px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); color: var(--text-mid);
+  font-size: 12px; transition: var(--tr);
+}
+.btn-secondary:hover { border-color: var(--text-mid); color: var(--text); }
+
+/* ===== MAIN ===== */
+main {
+  position: relative; z-index: 1;
+  min-height: calc(100vh - var(--header-h) - var(--footer-h));
+  padding-top: calc(var(--header-h) + 30px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding-bottom: 120px; gap: 0;
+}
+
+/* ===== CLOCK ===== */
+#clock-section {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 8px; margin-bottom: 24px; cursor: none;
+}
+#analog-clock-wrap { position: relative; width: 160px; height: 160px; }
+#analog-clock { transition: opacity 0.3s; }
+#digital-clock {
+  font-family: var(--font-d); font-size: 52px; font-weight: 700;
+  color: var(--cyan); text-shadow: var(--glow-c), 0 0 60px rgba(0,245,212,0.2);
+  letter-spacing: 4px; display: none;
+  filter: drop-shadow(0 0 20px var(--cyan));
+}
+#clock-date { font-family: var(--font-m); font-size: 13px; color: var(--text-dim); letter-spacing: 3px; margin-top: 2px; }
+.clock-hint { font-size: 10px; color: var(--text-dim); opacity: 0.5; font-family: var(--font-m); letter-spacing: 2px; margin-top: 2px; }
+
+/* ===== QUOTE ===== */
+#quote-section {
+  text-align: center; max-width: 600px; padding: 0 20px; margin-bottom: 28px;
+}
+#quote-text {
+  font-size: 15px; color: var(--text-mid); font-style: italic;
+  line-height: 1.7; transition: opacity 0.4s;
+  font-weight: 300;
+}
+#quote-author { font-size: 12px; color: var(--text-dim); margin-top: 6px; font-family: var(--font-m); letter-spacing: 2px; }
+#quote-refresh {
+  margin-top: 8px; font-size: 11px; color: var(--text-dim); padding: 4px 10px;
+  border: 1px solid rgba(0,245,212,0.1); border-radius: 20px; transition: var(--tr);
+}
+#quote-refresh:hover { color: var(--cyan); border-color: var(--cyan); box-shadow: var(--glow-c); }
+
+/* ===== SEARCH ===== */
+#search-section { width: 100%; max-width: 720px; padding: 0 20px; }
+.search-bar-wrap {
+  background: var(--glass); border: 1px solid var(--border);
+  border-radius: 50px; display: flex; align-items: center;
+  padding: 6px 6px 6px 16px; gap: 8px;
+  box-shadow: 0 4px 40px rgba(0,0,0,0.4);
+  transition: var(--tr); position: relative;
+}
+.search-bar-wrap:focus-within { border-color: var(--cyan); box-shadow: var(--glow-c), 0 4px 40px rgba(0,0,0,0.5); }
+#engine-icon { width: 24px; height: 24px; border-radius: 6px; object-fit: contain; flex-shrink: 0; cursor: none; }
+#search-input {
+  flex: 1; background: none; border: none; font-size: 16px;
+  color: var(--text); font-family: var(--font-b); font-weight: 400;
+  padding: 6px 0;
+}
+#search-input::placeholder { color: var(--text-dim); }
+#img-preview-thumb {
+  width: 32px; height: 32px; border-radius: 6px; object-fit: cover;
+  border: 1px solid var(--border); display: none;
+}
+.search-actions { display: flex; gap: 4px; align-items: center; flex-shrink: 0; }
+.search-btn-sm {
+  width: 36px; height: 36px; border-radius: 50%; display: flex;
+  align-items: center; justify-content: center; font-size: 16px;
+  transition: var(--tr); color: var(--text-dim);
+}
+.search-btn-sm:hover { background: rgba(0,245,212,0.1); color: var(--cyan); }
+#search-btn {
+  padding: 8px 20px; border-radius: 50px;
+  background: linear-gradient(135deg, var(--cyan), #00a896);
+  color: var(--bg); font-family: var(--font-d); font-size: 12px; font-weight: 700;
+  letter-spacing: 1px; transition: var(--tr); white-space: nowrap;
+}
+#search-btn:hover { opacity: 0.85; box-shadow: var(--glow-c); transform: translateY(-1px); }
+#voice-btn { font-size: 18px; }
+#img-upload { display: none; }
+
+/* ===== ENGINE DROPDOWN ===== */
+#engine-dropdown-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 10px; border-radius: 20px; border: 1px solid var(--border);
+  background: rgba(0,245,212,0.05); color: var(--text-mid);
+  font-size: 11px; font-family: var(--font-m); transition: var(--tr);
+  flex-shrink: 0; cursor: none;
+}
+#engine-dropdown-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+#engine-name-label { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.engine-arrow { font-size: 8px; transition: transform 0.2s; }
+#engine-panel {
+  position: absolute; top: calc(100% + 10px); left: 0; right: 0;
+  background: var(--glass); backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); z-index: 300; overflow: hidden;
+  box-shadow: 0 12px 60px rgba(0,0,0,0.8);
+  transform: translateY(-8px); opacity: 0; pointer-events: none; transition: var(--tr);
+  max-height: 420px; overflow-y: auto;
+}
+#engine-panel.open { transform: none; opacity: 1; pointer-events: auto; }
+.engine-category { padding: 10px 14px 4px; }
+.engine-cat-title {
+  font-family: var(--font-d); font-size: 9px; color: var(--text-dim);
+  letter-spacing: 3px; text-transform: uppercase; padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.04); margin-bottom: 4px;
+}
+.engine-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 4px; }
+.engine-item {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 8px 4px; border-radius: 8px; cursor: none;
+  transition: var(--tr); border: 1px solid transparent;
+}
+.engine-item:hover { background: rgba(0,245,212,0.06); border-color: var(--border); }
+.engine-item.active { background: rgba(0,245,212,0.1); border-color: var(--cyan); }
+.engine-item img { width: 22px; height: 22px; border-radius: 4px; object-fit: contain; }
+.engine-item .e-placeholder { width: 22px; height: 22px; border-radius: 4px; background: var(--glass-light); display: flex; align-items: center; justify-content: center; font-size: 12px; }
+.engine-item span { font-size: 9px; color: var(--text-mid); text-align: center; max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.engine-item.active span { color: var(--cyan); }
+
+/* ===== SEARCH SUGGESTIONS ===== */
+#search-suggestions {
+  position: absolute; top: calc(100% + 8px); left: 0; right: 0;
+  background: var(--glass); backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px); border: 1px solid var(--border);
+  border-radius: var(--radius); z-index: 250; overflow: hidden;
+  display: none; box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+}
+#search-suggestions.show { display: block; }
+.suggestion-item {
+  padding: 10px 16px; display: flex; align-items: center; gap: 10px;
+  font-size: 13px; transition: var(--tr); cursor: none;
+}
+.suggestion-item:hover { background: rgba(0,245,212,0.06); color: var(--cyan); }
+.suggestion-icon { font-size: 12px; color: var(--text-dim); }
+#img-search-banner {
+  display: none; background: rgba(0,245,212,0.05); border: 1px dashed rgba(0,245,212,0.3);
+  border-radius: var(--radius); padding: 10px 16px; margin-top: 8px;
+  align-items: center; gap: 10px; font-size: 12px; color: var(--text-mid);
+}
+#img-search-banner.show { display: flex; }
+.img-banner-preview { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; }
+
+/* ===== QUICK SEARCH ===== */
+#quick-search { width: 100%; max-width: 720px; padding: 0 20px; margin-top: 22px; }
+.qs-label { font-family: var(--font-m); font-size: 10px; color: var(--text-dim); letter-spacing: 3px; margin-bottom: 10px; text-align: center; }
+#qs-grid { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.qs-item {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  padding: 10px 12px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--glass);
+  transition: var(--tr); cursor: none; min-width: 64px;
+}
+.qs-item:hover { border-color: var(--cyan); box-shadow: var(--glow-c); transform: translateY(-2px); background: rgba(0,245,212,0.05); }
+.qs-item img { width: 24px; height: 24px; border-radius: 5px; object-fit: contain; }
+.qs-item .qs-placeholder { width: 24px; height: 24px; border-radius: 5px; background: var(--glass-light); display: flex; align-items: center; justify-content: center; font-size: 13px; }
+.qs-item span { font-size: 9px; color: var(--text-mid); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60px; text-align: center; }
+
+/* ===== BOOKMARK HUB ===== */
+#bookmark-hub {
+  position: fixed; bottom: var(--footer-h); left: 0; right: 0;
+  z-index: 90; transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
+  transform: translateY(calc(100% - 46px));
+}
+#bookmark-hub.expanded { transform: translateY(0); }
+.hub-toggle {
+  background: rgba(5,8,16,0.9); backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px); border-top: 1px solid var(--border);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px; height: 46px; cursor: none; transition: var(--tr);
+}
+.hub-toggle:hover { background: rgba(0,245,212,0.04); }
+.hub-toggle-left { display: flex; align-items: center; gap: 10px; font-family: var(--font-d); font-size: 11px; color: var(--text-mid); letter-spacing: 2px; }
+.hub-toggle-right { display: flex; align-items: center; gap: 8px; }
+.hub-toggle-icon { font-size: 12px; color: var(--text-dim); transition: transform 0.3s; }
+#bookmark-hub.expanded .hub-toggle-icon { transform: rotate(180deg); }
+.hub-add-btn { font-size: 10px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 20px; color: var(--text-dim); transition: var(--tr); }
+.hub-add-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+.hub-body {
+  background: rgba(5,8,16,0.95); backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px); border-top: 1px solid rgba(255,255,255,0.04);
+  padding: 14px 20px 10px;
+}
+.hub-cats { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.hub-cat-btn {
+  padding: 4px 14px; border-radius: 20px; font-size: 11px;
+  border: 1px solid var(--border); color: var(--text-dim); transition: var(--tr);
+}
+.hub-cat-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+.hub-cat-btn.active { background: rgba(0,245,212,0.1); border-color: var(--cyan); color: var(--cyan); }
+#hub-items { display: flex; flex-wrap: wrap; gap: 8px; min-height: 60px; max-height: 140px; overflow-y: auto; }
+.hub-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 12px; border-radius: var(--radius-sm);
+  background: var(--glass); border: 1px solid var(--border);
+  cursor: none; transition: var(--tr); font-size: 12px; color: var(--text-mid);
+  text-decoration: none; position: relative;
+}
+.hub-item:hover { border-color: var(--cyan); color: var(--cyan); transform: translateY(-2px); box-shadow: var(--glow-c); }
+.hub-item img, .hub-item .bm-placeholder { width: 16px; height: 16px; border-radius: 3px; object-fit: contain; flex-shrink: 0; }
+.hub-item .bm-placeholder { background: var(--glass-light); display: flex; align-items: center; justify-content: center; font-size: 10px; }
+.hub-item-remove {
+  position: absolute; top: -6px; right: -6px; width: 14px; height: 14px;
+  border-radius: 50%; background: var(--pink); color: white; font-size: 9px;
+  display: none; align-items: center; justify-content: center;
+}
+.hub-item:hover .hub-item-remove { display: flex; }
+.hub-empty { color: var(--text-dim); font-size: 12px; font-family: var(--font-m); letter-spacing: 2px; display: flex; align-items: center; justify-content: center; width: 100%; }
+
+/* ===== ADD BOOKMARK MODAL ===== */
+#add-bm-modal {
+  position: fixed; inset: 0; z-index: 500;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+  opacity: 0; pointer-events: none; transition: var(--tr);
+}
+#add-bm-modal.open { opacity: 1; pointer-events: auto; }
+.add-bm-box {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 24px; width: 380px;
+  box-shadow: 0 20px 80px rgba(0,0,0,0.8);
+}
+.add-bm-box h3 { font-family: var(--font-d); font-size: 13px; color: var(--cyan); margin-bottom: 16px; letter-spacing: 2px; }
+.bm-cat-select {
+  background: var(--glass); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 10px 14px; color: var(--text); font-family: var(--font-b); font-size: 13px;
+  width: 100%; transition: var(--tr); appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%235a7090'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+  background-repeat: no-repeat; background-position: right 10px center;
+}
+.bm-cat-select:focus { border-color: var(--cyan); }
+.bm-cat-select option { background: var(--bg2); }
+
+/* ===== SETTINGS MODAL ===== */
+#settings-modal {
+  position: fixed; inset: 0; z-index: 400;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.75); backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px); opacity: 0; pointer-events: none; transition: var(--tr);
+}
+#settings-modal.open { opacity: 1; pointer-events: auto; }
+.settings-box {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); width: min(860px, 95vw); height: min(600px, 90vh);
+  display: flex; overflow: hidden; box-shadow: 0 20px 80px rgba(0,0,0,0.9);
+  transform: scale(0.96); transition: var(--tr);
+}
+#settings-modal.open .settings-box { transform: scale(1); }
+.settings-sidebar {
+  width: 190px; background: rgba(0,0,0,0.3); border-right: 1px solid var(--border);
+  padding: 20px 12px; display: flex; flex-direction: column; gap: 4px; flex-shrink: 0;
+}
+.settings-sidebar-title { font-family: var(--font-d); font-size: 11px; color: var(--cyan); letter-spacing: 3px; margin-bottom: 14px; padding-left: 10px; }
+.s-tab {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: var(--radius-sm);
+  font-size: 13px; color: var(--text-mid); transition: var(--tr);
+  text-align: left;
+}
+.s-tab:hover { background: rgba(0,245,212,0.06); color: var(--text); }
+.s-tab.active { background: rgba(0,245,212,0.1); color: var(--cyan); border-left: 2px solid var(--cyan); }
+.s-tab-icon { font-size: 16px; width: 22px; text-align: center; }
+.settings-main { flex: 1; overflow-y: auto; padding: 24px 28px; }
+.settings-main::-webkit-scrollbar { width: 4px; }
+.settings-panel { display: none; }
+.settings-panel.active { display: block; }
+.settings-panel h2 { font-family: var(--font-d); font-size: 16px; color: var(--text); margin-bottom: 24px; letter-spacing: 2px; }
+.settings-panel h2 span { color: var(--cyan); }
+.s-section { margin-bottom: 24px; }
+.s-section-title { font-size: 10px; color: var(--text-dim); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 12px; font-family: var(--font-m); }
+.s-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.s-row:last-child { border-bottom: none; }
+.s-row-label { font-size: 13px; color: var(--text-mid); }
+.s-row-label small { display: block; font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+/* Toggle switch */
+.toggle {
+  width: 42px; height: 22px; border-radius: 11px; background: rgba(255,255,255,0.1);
+  position: relative; cursor: none; transition: var(--tr); flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+.toggle.on { background: rgba(0,245,212,0.2); border-color: var(--cyan); }
+.toggle::after {
+  content: ''; position: absolute; top: 3px; left: 3px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--text-dim); transition: var(--tr);
+}
+.toggle.on::after { left: 23px; background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+/* Settings select */
+.s-select {
+  background: var(--glass); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 7px 12px; color: var(--text); font-family: var(--font-b); font-size: 12px;
+  appearance: none; cursor: none; min-width: 140px;
+}
+.s-select:focus { border-color: var(--cyan); }
+.s-select option { background: var(--bg2); }
+/* Profile avatar upload area */
+.avatar-upload-area {
+  display: flex; align-items: center; gap: 16px; padding: 14px 0;
+}
+.avatar-large {
+  width: 64px; height: 64px; border-radius: 50%;
+  border: 2px solid var(--cyan); background: linear-gradient(135deg, var(--purple), var(--cyan));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; font-weight: 700; font-family: var(--font-d);
+  color: var(--bg); overflow: hidden; flex-shrink: 0;
+}
+.avatar-large img { width: 100%; height: 100%; object-fit: cover; }
+.avatar-upload-actions { display: flex; flex-direction: column; gap: 6px; }
+.s-btn-sm { font-size: 11px; padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border); color: var(--text-dim); transition: var(--tr); }
+.s-btn-sm:hover { border-color: var(--cyan); color: var(--cyan); }
+.s-btn-sm.danger:hover { border-color: var(--pink); color: var(--pink); }
+/* Wallpaper options */
+.wallpaper-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-top: 8px; }
+.wallpaper-opt {
+  height: 52px; border-radius: 8px; cursor: none; border: 2px solid transparent;
+  transition: var(--tr); overflow: hidden;
+}
+.wallpaper-opt:hover, .wallpaper-opt.active { border-color: var(--cyan); box-shadow: var(--glow-c); }
+.wallpaper-opt.aurora { background: linear-gradient(135deg, #05081080 0%, #0a0f1a 30%, rgba(0,245,212,0.15) 60%, rgba(155,93,229,0.15) 100%); }
+.wallpaper-opt.cyber { background: linear-gradient(135deg, #050810, #0d0020, #001a1a); }
+.wallpaper-opt.gradient { background: linear-gradient(135deg, #1a0530, #0d2050, #051530); }
+.wallpaper-opt.dark { background: #080808; }
+.wallpaper-url-row { display: flex; gap: 8px; margin-top: 8px; }
+.wallpaper-url-row input { flex: 1; }
+/* Engine settings */
+.engine-settings-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 6px; margin-top: 8px; }
+.engine-setting-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: var(--glass); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.engine-setting-item .e-info { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-mid); }
+.engine-setting-item img { width: 16px; height: 16px; border-radius: 3px; object-fit: contain; }
+/* Bookmark settings */
+.bm-cat-list { display: flex; flex-direction: column; gap: 6px; }
+.bm-cat-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--glass); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.bm-cat-item-name { font-size: 13px; color: var(--text-mid); }
+.bm-cat-del { font-size: 14px; color: var(--text-dim); transition: var(--tr); }
+.bm-cat-del:hover { color: var(--pink); }
+.bm-cat-add-row { display: flex; gap: 8px; margin-top: 10px; }
+.bm-cat-add-row input { flex: 1; }
+/* Import/export */
+.ie-row { display: flex; gap: 8px; margin-top: 8px; }
+/* Sound themes */
+.sound-themes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.sound-theme-btn { padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); font-size: 12px; color: var(--text-dim); transition: var(--tr); }
+.sound-theme-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+.sound-theme-btn.active { background: rgba(0,245,212,0.1); border-color: var(--cyan); color: var(--cyan); }
+/* Settings close */
+.settings-close {
+  position: absolute; top: 14px; right: 16px;
+  width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,0.06);
+  display: flex; align-items: center; justify-content: center; font-size: 16px;
+  color: var(--text-dim); transition: var(--tr);
+}
+.settings-close:hover { background: rgba(247,37,133,0.15); color: var(--pink); }
+.settings-box { position: relative; }
+
+/* ===== FOOTER ===== */
+footer {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+  height: var(--footer-h); background: rgba(5,8,16,0.9);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border); padding: 0 20px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.footer-items { display: flex; gap: 20px; align-items: center; }
+.footer-item {
+  display: flex; align-items: center; gap: 6px; font-family: var(--font-m);
+  font-size: 10px; color: var(--text-dim); letter-spacing: 1px;
+}
+.footer-item span.label { color: rgba(0,245,212,0.4); }
+.footer-item span.value { color: var(--text-dim); }
+.footer-center { font-family: var(--font-d); font-size: 9px; color: rgba(0,245,212,0.2); letter-spacing: 4px; }
+
+/* ===== TOAST ===== */
+#toast-container { position: fixed; top: 80px; right: 16px; z-index: 9000; display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  background: var(--glass); backdrop-filter: blur(20px); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 16px; font-size: 12px;
+  color: var(--text); box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  transform: translateX(110%); transition: transform 0.3s;
+  display: flex; align-items: center; gap: 8px; max-width: 280px;
+}
+.toast.show { transform: none; }
+.toast.success { border-color: var(--cyan); }
+.toast.error { border-color: var(--pink); }
+.toast.info { border-color: var(--purple); }
+
+/* ===== ANIMATIONS ===== */
+@keyframes pulse-glow { 0%,100%{box-shadow:0 0 10px rgba(0,245,212,0.3)} 50%{box-shadow:0 0 30px rgba(0,245,212,0.7)} }
+@keyframes slide-up { from{transform:translateY(20px);opacity:0} to{transform:none;opacity:1} }
+@keyframes fade-in { from{opacity:0} to{opacity:1} }
+.slide-up { animation: slide-up 0.5s ease forwards; }
+.fade-in { animation: fade-in 0.5s ease forwards; }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width:768px) {
+  #weather-widget .weather-extra { display: none; }
+  .settings-box { flex-direction: column; height: 95vh; }
+  .settings-sidebar { width: 100%; height: auto; flex-direction: row; overflow-x: auto; padding: 10px; border-right: none; border-bottom: 1px solid var(--border); }
+  .settings-sidebar-title { display: none; }
+  .engine-grid { grid-template-columns: repeat(3,1fr); }
+  #waffle-panel { right: 8px; width: calc(100vw - 16px); }
+  .wallpaper-grid { grid-template-columns: repeat(2,1fr); }
+  .engine-settings-grid { grid-template-columns: 1fr; }
+  header { padding: 0 10px; gap: 6px; }
+  #weather-widget { padding: 5px 10px; }
+}
+@media (max-width:480px) {
+  #weather-widget .weather-desc { display: none; }
+  .header-logo { font-size: 14px; letter-spacing: 2px; }
+  #digital-clock { font-size: 36px; }
+}
+
+/* ===== GLASS THEME ===== */
+body.glass-mode .search-bar-wrap { background: rgba(20,30,60,0.3); }
+body.glass-mode header { background: rgba(5,8,16,0.5); }
+body.glass-mode footer { background: rgba(5,8,16,0.5); }
+body.glass-mode #waffle-panel, body.glass-mode #profile-panel { background: rgba(8,14,30,0.5); }
+
+/* ===== LIGHT THEME ===== */
+body.light-mode {
+  --bg: #f0f4ff; --bg2: #e8eeff; --glass: rgba(255,255,255,0.7);
+  --glass-light: rgba(200,210,240,0.5); --border: rgba(0,180,160,0.3);
+  --text: #1a2040; --text-dim: #6080a0; --text-mid: #3a5070;
+  --cyan: #007a70; --purple: #6030b0;
+}
+body.light-mode header { background: rgba(240,244,255,0.9); }
+body.light-mode footer { background: rgba(240,244,255,0.9); }
+body.light-mode .bg-grid { background-image: linear-gradient(rgba(0,180,160,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,180,160,0.05) 1px, transparent 1px); background-size: 60px 60px; }
+
+/* Wallpaper media */
+#wallpaper-bg {
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  opacity: 0.35; object-fit: cover; width: 100%; height: 100%;
+  display: none;
+}
+#wallpaper-video {
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  opacity: 0.25; object-fit: cover; width: 100%; height: 100%;
+  display: none;
+}
+
+/* Hub toggle badge */
+.hub-count {
+  background: rgba(0,245,212,0.15); border: 1px solid var(--border);
+  color: var(--cyan); font-family: var(--font-m); font-size: 9px;
+  padding: 1px 6px; border-radius: 10px; margin-left: 4px;
+}
+</style>
+</head>
+<body>
+
+<!-- Background Layers -->
+<div class="bg-aurora"></div>
+<div class="bg-grid"></div>
+<canvas id="bg-canvas"></canvas>
+<img id="wallpaper-bg" alt="">
+<video id="wallpaper-video" autoplay loop muted playsinline></video>
+
+<!-- Custom Cursor -->
+<div id="cursor-ring"></div>
+<div id="cursor-dot"></div>
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<!-- Loading Screen -->
+<div id="loading-screen">
+  <div class="loader-hex">⬡</div>
+  <div class="loader-title">NE<span>X</span>US</div>
+  <div class="loader-bar-wrap"><div class="loader-bar"></div></div>
+  <div class="loader-status">INITIALIZING SYSTEMS...</div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <!-- Weather Widget -->
+  <div id="weather-widget" title="Click to refresh weather">
+      <div id="weather-widget" onclick="Weather.toggleDetail()"></div>
+    <div class="weather-icon" id="weather-icon">🌤️</div>
+    <div class="weather-info">
+      <div class="weather-temp" id="weather-temp">--°C</div>
+      <div class="weather-loc" id="weather-loc">LOCATING...</div>
+      <div class="weather-desc" id="weather-desc">...</div>
+      <div class="weather-extra" id="weather-extra"></div>
+    </div>
+    <button id="weather-btn-refresh" title="Refresh">↻</button>
+  </div>
+
+  <!-- Logo -->
+  <div class="header-logo">NE<span>X</span>US</div>
+
+  <!-- Right Actions -->
+  <div class="header-right">
+    <button class="icon-btn" id="waffle-btn" title="App Launcher">⊞</button>
+    <button class="icon-btn" id="profile-btn" title="Profile & Settings">
+      <div class="profile-avatar" id="profile-avatar-header"><span id="profile-initial">U</span></div>
+    </button>
+  </div>
+</header>
+
+<!-- WAFFLE PANEL -->
+<div id="waffle-panel">
+  <div class="waffle-header">
+    <span class="waffle-header-title">APP LAUNCHER</span>
+    <button class="waffle-add-btn" id="waffle-add-btn">+ Add App</button>
+  </div>
+  <div id="waffle-grid"></div>
+</div>
+
+<!-- PROFILE PANEL -->
+<div id="profile-panel">
+  <div class="profile-panel-head">
+    <div class="profile-avatar" id="profile-avatar-panel"><span id="profile-panel-initial">U</span></div>
+    <div>
+      <div class="profile-panel-name" id="profile-panel-name">USER</div>
+      <div style="font-size:10px;color:var(--text-dim)">NEXUS Member</div>
+    </div>
+  </div>
+  <button class="profile-panel-item" onclick="UI.openSettings('profile')">⚙️ Settings</button>
+  <button class="profile-panel-item" onclick="UI.openSettings('clock')">🕐 Clock Settings</button>
+  <button class="profile-panel-item" onclick="UI.openSettings('engines')">🔍 Engine Settings</button>
+  <button class="profile-panel-item" onclick="UI.openSettings('weather')">🌤️ Weather Settings</button>
+  <button class="profile-panel-item" onclick="UI.openSettings('sound')">🔊 Sound Settings</button>
+  <button class="profile-panel-item" onclick="UI.openSettings('bookmarks')">🔖 Bookmarks</button>
+</div>
+
+<!-- ADD APP MODAL -->
+<div id="add-app-modal">
+  <div class="add-app-box">
+    <h3>⊞ ADD APP</h3>
+    <div class="field-group">
+      <label>App Name</label>
+      <input type="text" id="app-name-input" class="glass-input" placeholder="e.g. GitHub">
+    </div>
+    <div class="field-group">
+      <label>URL</label>
+      <input type="url" id="app-url-input" class="glass-input" placeholder="https://github.com">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="UI.closeAddApp()">Cancel</button>
+      <button class="btn-primary" onclick="WaffleMenu.addApp()">Add App</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD BOOKMARK MODAL -->
+<div id="add-bm-modal">
+  <div class="add-bm-box">
+    <h3>🔖 ADD BOOKMARK</h3>
+    <div class="field-group">
+      <label>Title</label>
+      <input type="text" id="bm-title-input" class="glass-input" placeholder="e.g. My Site">
+    </div>
+    <div class="field-group">
+      <label>URL</label>
+      <input type="url" id="bm-url-input" class="glass-input" placeholder="https://example.com">
+    </div>
+    <div class="field-group">
+      <label>Category</label>
+      <select class="bm-cat-select" id="bm-cat-select"></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="UI.closeAddBm()">Cancel</button>
+      <button class="btn-primary" onclick="BookmarkHub.addBookmark()">Add Bookmark</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div id="settings-modal">
+  <div class="settings-box">
+    <button class="settings-close" onclick="UI.closeSettings()">✕</button>
+    <nav class="settings-sidebar">
+      <div class="settings-sidebar-title">SETTINGS</div>
+      <button class="s-tab active" data-tab="profile"><span class="s-tab-icon">👤</span>Profile</button>
+      <button class="s-tab" data-tab="clock"><span class="s-tab-icon">🕐</span>Clock</button>
+      <button class="s-tab" data-tab="engines"><span class="s-tab-icon">🔍</span>Engines</button>
+      <button class="s-tab" data-tab="bookmarks"><span class="s-tab-icon">🔖</span>Bookmarks</button>
+      <button class="s-tab" data-tab="sound"><span class="s-tab-icon">🔊</span>Sound</button>
+      <button class="s-tab" data-tab="weather"><span class="s-tab-icon">🌤️</span>Weather</button>
+    </nav>
+    <div class="settings-main">
+
+      <!-- Profile Panel -->
+      <div class="settings-panel active" id="panel-profile">
+        <h2>👤 <span>Profile</span> Settings</h2>
+        <div class="s-section">
+          <div class="s-section-title">Avatar & Name</div>
+          <div class="avatar-upload-area">
+            <div class="avatar-large" id="settings-avatar"><span id="settings-avatar-initial">U</span></div>
+            <div class="avatar-upload-actions">
+              <button class="s-btn-sm" onclick="document.getElementById('avatar-upload').click()">Upload Photo</button>
+              <button class="s-btn-sm danger" onclick="Sett.clearAvatar()">Remove Photo</button>
+            </div>
+          </div>
+          <input type="file" id="avatar-upload" accept="image/*" style="display:none">
+          <div class="s-row">
+            <div class="s-row-label">Display Name</div>
+            <input type="text" id="profile-name-input" class="glass-input" style="width:200px" placeholder="Your Name">
+          </div>
+          <div class="s-row" style="padding-top:8px;border:none">
+            <button class="btn-primary" onclick="Sett.saveProfile()">Save Profile</button>
+          </div>
+        </div>
+        <div class="s-section">
+          <div class="s-section-title">Background & Wallpaper</div>
+          <div class="wallpaper-grid">
+            <div class="wallpaper-opt aurora active" data-wp="aurora" title="Aurora"></div>
+            <div class="wallpaper-opt cyber" data-wp="cyber" title="Cyber Dark"></div>
+            <div class="wallpaper-opt gradient" data-wp="gradient" title="Deep Space"></div>
+            <div class="wallpaper-opt dark" data-wp="dark" title="Pure Dark"></div>
+          </div>
+          <div class="wallpaper-url-row" style="margin-top:12px">
+            <input type="url" id="wallpaper-url" class="glass-input" placeholder="Image/GIF/Video URL...">
+            <button class="btn-primary" onclick="Sett.applyWallpaper()">Apply</button>
+            <button class="s-btn-sm" onclick="Sett.clearWallpaper()">Clear</button>
+          </div>
+        </div>
+        <div class="s-section">
+          <div class="s-section-title">Theme & Effects</div>
+          <div class="s-row">
+            <div class="s-row-label">Dark Mode<small>Switch between dark and light</small></div>
+            <div class="toggle on" id="toggle-dark" onclick="Sett.toggle('darkMode',this)"></div>
+          </div>
+          <div class="s-row">
+            <div class="s-row-label">Glass Effect<small>Glassmorphism on panels</small></div>
+            <div class="toggle on" id="toggle-glass" onclick="Sett.toggle('glassEffect',this)"></div>
+          </div>
+          <div class="s-row">
+            <div class="s-row-label">Color Accent</div>
+            <select class="s-select" id="theme-select" onchange="Sett.changeTheme(this.value)">
+              <option value="cyber">Cyber Cyan</option>
+              <option value="purple">Neon Purple</option>
+              <option value="pink">Electric Pink</option>
+              <option value="gold">Golden</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Clock Panel -->
+      <div class="settings-panel" id="panel-clock">
+        <h2>🕐 <span>Clock</span> Settings</h2>
+        <div class="s-section">
+          <div class="s-section-title">Display Mode</div>
+          <div class="s-row">
+            <div class="s-row-label">Clock Style<small>Tap clock to toggle</small></div>
+            <select class="s-select" id="clock-mode-select" onchange="Sett.setClockMode(this.value)">
+              <option value="analog">Analog</option>
+              <option value="digital">Digital</option>
+            </select>
+          </div>
+          <div class="s-row">
+            <div class="s-row-label">24-Hour Format<small>Use 24hr time display</small></div>
+            <div class="toggle" id="toggle-24hr" onclick="Sett.toggle('format24',this)"></div>
+          </div>
+          <div class="s-row">
+            <div class="s-row-label">Show Seconds<small>Display seconds in clock</small></div>
+            <div class="toggle on" id="toggle-seconds" onclick="Sett.toggle('showSeconds',this)"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Engines Panel -->
+      <div class="settings-panel" id="panel-engines">
+        <h2>🔍 <span>Engine</span> Settings</h2>
+        <div class="s-section">
+          <div class="s-section-title">Quick Bar Engines (Visible in Dropdown)</div>
+          <div class="engine-settings-grid" id="engines-settings-grid"></div>
+        </div>
+      </div>
+
+      <!-- Bookmarks Panel -->
+      <div class="settings-panel" id="panel-bookmarks">
+        <h2>🔖 <span>Bookmark</span> Settings</h2>
+        <div class="s-section">
+          <div class="s-section-title">Categories</div>
+          <div class="bm-cat-list" id="bm-cat-list"></div>
+          <div class="bm-cat-add-row">
+            <input type="text" id="new-cat-input" class="glass-input" placeholder="New category name...">
+            <button class="btn-primary" onclick="Sett.addCategory()">Add</button>
+          </div>
+        </div>
+        <div class="s-section">
+          <div class="s-section-title">Import / Export</div>
+          <div class="ie-row">
+            <button class="btn-primary" onclick="BookmarkHub.exportJSON()">⬇ Export JSON</button>
+            <button class="s-btn-sm" onclick="document.getElementById('import-bm').click()">⬆ Import JSON</button>
+            <input type="file" id="import-bm" accept=".json" style="display:none" onchange="BookmarkHub.importJSON(this)">
+          </div>
+          <div style="font-size:11px;color:var(--text-dim);margin-top:8px">Exports all bookmarks and app launcher data as JSON</div>
+        </div>
+      </div>
+
+      <!-- Sound Panel -->
+      <div class="settings-panel" id="panel-sound">
+        <h2>🔊 <span>Sound</span> Settings</h2>
+        <div class="s-section">
+          <div class="s-section-title">Sound Options</div>
+          <div class="s-row">
+            <div class="s-row-label">Enable Sounds<small>Click and interaction sounds</small></div>
+            <div class="toggle on" id="toggle-sound" onclick="Sett.toggle('soundEnabled',this)"></div>
+          </div>
+        </div>
+        <div class="s-section">
+          <div class="s-section-title">Sound Theme</div>
+          <div class="sound-themes" id="sound-themes">
+            <button class="sound-theme-btn active" data-theme="cyber" onclick="Sett.setSoundTheme('cyber',this)">🤖 Cyber</button>
+            <button class="sound-theme-btn" data-theme="nature" onclick="Sett.setSoundTheme('nature',this)">🌿 Nature</button>
+            <button class="sound-theme-btn" data-theme="retro" onclick="Sett.setSoundTheme('retro',this)">👾 Retro</button>
+            <button class="sound-theme-btn" data-theme="fun" onclick="Sett.setSoundTheme('fun',this)">🎉 Fun</button>
+          </div>
+        </div>
+        <div class="s-section">
+          <div class="s-section-title">Test Sounds</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+            <button class="s-btn-sm" onclick="Sound.play('click')">Click</button>
+            <button class="s-btn-sm" onclick="Sound.play('search')">Search</button>
+            <button class="s-btn-sm" onclick="Sound.play('open')">Open</button>
+            <button class="s-btn-sm" onclick="Sound.play('success')">Success</button>
+            <button class="s-btn-sm" onclick="Sound.play('fun')">Fun 🎉</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Weather Panel -->
+      <div class="settings-panel" id="panel-weather">
+        <h2>🌤️ <span>Weather</span> Settings</h2>
+        <div class="s-section">
+          <div class="s-section-title">Location</div>
+          <div class="s-row">
+            <div class="s-row-label">Auto Detect Location<small>Use browser GPS</small></div>
+            <div class="toggle on" id="toggle-auto-loc" onclick="Sett.toggle('weatherAuto',this)"></div>
+          </div>
+          <div class="s-row">
+            <div class="s-row-label">Manual Location<small>City name or address</small></div>
+            <div style="display:flex;gap:8px">
+              <input type="text" id="weather-loc-input" class="glass-input" placeholder="e.g. New York, US" style="width:180px">
+              <button class="btn-primary" onclick="Weather.searchCity()">Set</button>
+            </div>
+          </div>
+          <div class="s-row">
+            <div class="s-row-label">Temperature Unit</div>
+            <select class="s-select" id="temp-unit-select" onchange="Sett.setTempUnit(this.value)">
+              <option value="C">Celsius (°C)</option>
+              <option value="F">Fahrenheit (°F)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end settings-main -->
+  </div><!-- end settings-box -->
+</div><!-- end settings-modal -->
+
+<!-- MAIN CONTENT -->
+<main>
+  <!-- Clock Section -->
+  <div id="clock-section" onclick="Clock.toggle()" title="Click to switch clock style">
+    <div id="analog-clock-wrap">
+      <canvas id="analog-clock" width="160" height="160"></canvas>
+    </div>
+    <div id="digital-clock">12:00:00</div>
+    <div id="clock-date">MONDAY, JAN 01 2025</div>
+    <div class="clock-hint">[ click to toggle ]</div>
+  </div>
+
+  <!-- Quote Section -->
+  <div id="quote-section">
+    <div id="quote-text">Loading inspiration...</div>
+    <div id="quote-author">— Anonymous</div>
+    <button id="quote-refresh" onclick="Quotes.refresh()" title="New quote">↻ new thought</button>
+  </div>
+
+  <!-- Search Section -->
+  <div id="search-section">
+    <div class="search-bar-wrap" id="search-bar-wrap">
+      <!-- Engine selector -->
+      <button id="engine-dropdown-btn" onclick="Search.toggleEnginePanel()">
+        <img id="engine-icon" src="" alt="" onerror="this.style.display='none'">
+        <span id="engine-name-label">Google</span>
+        <span class="engine-arrow" id="engine-arrow">▾</span>
+      </button>
+
+      <!-- Hidden file input for image search -->
+      <input type="file" id="img-upload" accept="image/*" onchange="Search.handleImageUpload(this)">
+      <img id="img-preview-thumb" alt="image">
+
+      <!-- Search Input -->
+      <input type="text" id="search-input" placeholder="Search the universe..." autocomplete="off"
+        oninput="Search.onInput(this.value)"
+        onkeydown="Search.onKeyDown(event)">
+
+      <!-- Action buttons -->
+      <div class="search-actions">
+        <button class="search-btn-sm" id="img-btn" onclick="document.getElementById('img-upload').click()" title="Image Search">🖼️</button>
+        <button class="search-btn-sm" id="voice-btn" onclick="Search.startVoice()" title="Voice Search">🎤</button>
+        <button id="search-btn" onclick="Search.doSearch()">SEARCH</button>
+      </div>
+
+      <!-- Engine Panel Dropdown -->
+      <div id="engine-panel"></div>
+      <!-- Suggestions -->
+      <div id="search-suggestions"></div>
+    </div>
+
+    <!-- Image search banner -->
+    <div id="img-search-banner">
+      <img class="img-banner-preview" id="img-banner-preview" alt="">
+      <div>
+        <div style="font-size:11px;color:var(--cyan)">Image ready for search</div>
+        <div style="font-size:10px;color:var(--text-dim)" id="img-search-note">Select a supported engine then search</div>
+      </div>
+      <button style="margin-left:auto;font-size:18px;color:var(--text-dim)" onclick="Search.clearImage()">✕</button>
+    </div>
+  </div>
+
+  <!-- Quick Search -->
+  <div id="quick-search">
+    <div class="qs-label">QUICK ACCESS</div>
+    <div id="qs-grid"></div>
+  </div>
+</main>
+
+<!-- BOOKMARK HUB -->
+<div id="bookmark-hub">
+  <div class="hub-toggle" id="hub-toggle" onclick="BookmarkHub.toggle()">
+    <div class="hub-toggle-left">
+      <span>🔖</span>
+      <span>BOOKMARK HUB</span>
+      <span class="hub-count" id="hub-count">0</span>
+    </div>
+    <div class="hub-toggle-right">
+      <button class="hub-add-btn" onclick="event.stopPropagation();UI.openAddBm()">+ Add</button>
+      <span class="hub-toggle-icon">▲</span>
+    </div>
+  </div>
+  <div class="hub-body">
+    <div class="hub-cats" id="hub-cats"></div>
+    <div id="hub-items"></div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-items">
+    <div class="footer-item"><span class="label">🌍</span><span class="value" id="footer-country">Detecting...</span></div>
+    <div class="footer-item"><span class="label">🕐</span><span class="value" id="footer-tz">--</span></div>
+    <div class="footer-item"><span class="label">IP</span><span class="value" id="footer-ip">---.---.---</span></div>
+    <div class="footer-item"><span class="label">DNS</span><span class="value" id="footer-dns">System DNS</span></div>
+  </div>
+  <div class="footer-center">NEXUS · SEARCH</div>
+  <div class="footer-items" style="justify-content:flex-end">
+    <div class="footer-item"><span class="value" id="footer-time2" style="font-size:11px;color:rgba(0,245,212,0.4)"></span></div>
+  </div>
+</footer>
+
+<script>
+'use strict';
+
+/* ===================================================================
+   CONSTANTS & DATA
+=================================================================== */
+const QUOTES = [
+  {text:"The only way to do great work is to love what you do.",author:"Steve Jobs"},
+  {text:"Innovation distinguishes between a leader and a follower.",author:"Steve Jobs"},
+  {text:"The future belongs to those who believe in the beauty of their dreams.",author:"Eleanor Roosevelt"},
+  {text:"It does not matter how slowly you go as long as you do not stop.",author:"Confucius"},
+  {text:"In the middle of every difficulty lies opportunity.",author:"Albert Einstein"},
+  {text:"Life is what happens when you're busy making other plans.",author:"John Lennon"},
+  {text:"The way to get started is to quit talking and begin doing.",author:"Walt Disney"},
+  {text:"Don't watch the clock; do what it does. Keep going.",author:"Sam Levenson"},
+  {text:"The secret of getting ahead is getting started.",author:"Mark Twain"},
+  {text:"Believe you can and you're halfway there.",author:"Theodore Roosevelt"},
+  {text:"You are never too old to set another goal or to dream a new dream.",author:"C.S. Lewis"},
+  {text:"Act as if what you do makes a difference. It does.",author:"William James"},
+  {text:"Success is not final, failure is not fatal: It is the courage to continue that counts.",author:"Winston Churchill"},
+  {text:"The only impossible journey is the one you never begin.",author:"Tony Robbins"},
+  {text:"Life is not measured by the number of breaths we take, but by the moments that take our breath away.",author:"Maya Angelou"},
+  {text:"If you want to live a happy life, tie it to a goal, not to people or things.",author:"Albert Einstein"},
+  {text:"Never let the fear of striking out keep you from playing the game.",author:"Babe Ruth"},
+  {text:"Money and success don't change people; they merely amplify what is already there.",author:"Will Smith"},
+  {text:"Your time is limited, so don't waste it living someone else's life.",author:"Steve Jobs"},
+  {text:"Not everything that is faced can be changed, but nothing can be changed until it is faced.",author:"James Baldwin"},
+  {text:"We generate fears while we sit. We overcome them by action.",author:"Dr. Henry Link"},
+  {text:"Whether you think you can or think you can't, you're right.",author:"Henry Ford"},
+  {text:"Security is mostly a superstition. Life is either a daring adventure or nothing.",author:"Helen Keller"},
+  {text:"The man who has confidence in himself gains the confidence of others.",author:"Hasidic Proverb"},
+  {text:"The real opportunity for success lies within the person and not in the job.",author:"Zig Ziglar"},
+  {text:"If you're going through hell, keep going.",author:"Winston Churchill"},
+  {text:"The question isn't who is going to let me; it's who is going to stop me.",author:"Ayn Rand"},
+  {text:"Hardships often prepare ordinary people for an extraordinary destiny.",author:"C.S. Lewis"},
+  {text:"Happiness is not something ready-made. It comes from your own actions.",author:"Dalai Lama"},
+  {text:"I have not failed. I've just found 10,000 ways that won't work.",author:"Thomas Edison"},
+  {text:"What lies behind us and what lies before us are tiny matters compared to what lies within us.",author:"Ralph Waldo Emerson"},
+  {text:"Do what you can, with what you have, where you are.",author:"Theodore Roosevelt"},
+  {text:"You miss 100% of the shots you don't take.",author:"Wayne Gretzky"},
+  {text:"Every moment is a fresh beginning.",author:"T.S. Eliot"},
+  {text:"The only limit to our realization of tomorrow will be our doubts of today.",author:"Franklin D. Roosevelt"},
+  {text:"Try not to become a man of success, but rather try to become a man of value.",author:"Albert Einstein"},
+  {text:"A person who never made a mistake never tried anything new.",author:"Albert Einstein"},
+  {text:"The mind is everything. What you think you become.",author:"Buddha"},
+  {text:"Either write something worth reading or do something worth writing.",author:"Benjamin Franklin"},
+  {text:"The best time to plant a tree was 20 years ago. The second best time is now.",author:"Chinese Proverb"},
+  {text:"An unexamined life is not worth living.",author:"Socrates"},
+  {text:"Spread love everywhere you go. Let no one ever come to you without leaving happier.",author:"Mother Teresa"},
+  {text:"When you reach the end of your rope, tie a knot in it and hang on.",author:"Franklin D. Roosevelt"},
+  {text:"Always remember that you are absolutely unique. Just like everyone else.",author:"Margaret Mead"},
+  {text:"Do not go where the path may lead, go instead where there is no path and leave a trail.",author:"Ralph Waldo Emerson"},
+  {text:"You will face many defeats in life, but never let yourself be defeated.",author:"Maya Angelou"},
+  {text:"The greatest glory in living lies not in never falling, but in rising every time we fall.",author:"Nelson Mandela"},
+  {text:"In the end, it's not the years in your life that count. It's the life in your years.",author:"Abraham Lincoln"},
+  {text:"Never let the fear of striking out keep you from playing the game.",author:"Babe Ruth"},
+  {text:"Life is either a daring adventure or nothing at all.",author:"Helen Keller"},
+  {text:"Many of life's failures are people who did not realize how close they were to success when they gave up.",author:"Thomas Edison"},
+];
+
+const ENGINES = [
+  {id:'google',name:'Google',cat:'General',url:'https://www.google.com/search?q=',domain:'google.com',imgSearch:true},
+  {id:'google_ai',name:'Google AI',cat:'General',url:'https://www.google.com/search?q=&udm=50',domain:'google.com'},
+  {id:'bing',name:'Bing',cat:'General',url:'https://www.bing.com/search?q=',domain:'bing.com',imgSearch:true},
+  {id:'yahoo',name:'Yahoo',cat:'General',url:'https://search.yahoo.com/search?p=',domain:'yahoo.com'},
+  {id:'ask',name:'Ask',cat:'General',url:'https://www.ask.com/web?q=',domain:'ask.com'},
+  {id:'aol',name:'AOL',cat:'General',url:'https://search.aol.com/search?q=',domain:'aol.com'},
+  {id:'perplexity',name:'Perplexity',cat:'AI',url:'https://www.perplexity.ai/search?q=',domain:'perplexity.ai'},
+  {id:'chatgpt',name:'ChatGPT',cat:'AI',url:'https://chatgpt.com/?q=',domain:'chatgpt.com'},
+  {id:'gemini',name:'Gemini',cat:'AI',url:'https://gemini.google.com/app?q=',domain:'gemini.google.com'},
+  {id:'grok',name:'Grok',cat:'AI',url:'https://grok.x.com/',domain:'x.ai'},
+  {id:'deepseek',name:'DeepSeek',cat:'AI',url:'https://chat.deepseek.com/',domain:'deepseek.com'},
+  {id:'copilot',name:'Copilot',cat:'AI',url:'https://copilot.microsoft.com/?q=',domain:'microsoft.com'},
+  {id:'phind',name:'Phind',cat:'AI',url:'https://www.phind.com/search?q=',domain:'phind.com'},
+  {id:'you',name:'You.com',cat:'AI',url:'https://you.com/search?q=',domain:'you.com'},
+  {id:'ddg_ai',name:'DuckDuckAI',cat:'AI',url:'https://duckduckgo.com/?q=&ia=chat',domain:'duckduckgo.com'},
+  {id:'duckduckgo',name:'DuckDuckGo',cat:'Privacy',url:'https://duckduckgo.com/?q=',domain:'duckduckgo.com'},
+  {id:'brave',name:'Brave',cat:'Privacy',url:'https://search.brave.com/search?q=',domain:'search.brave.com'},
+  {id:'ecosia',name:'Ecosia',cat:'Privacy',url:'https://www.ecosia.org/search?q=',domain:'ecosia.org'},
+  {id:'mojeek',name:'Mojeek',cat:'Privacy',url:'https://www.mojeek.com/search?q=',domain:'mojeek.com'},
+  {id:'yep',name:'Yep',cat:'Privacy',url:'https://yep.com/web?q=',domain:'yep.com'},
+  {id:'privacywall',name:'PrivacyWall',cat:'Privacy',url:'https://www.privacywall.org/search/secure/?q=',domain:'privacywall.org'},
+  {id:'swisscows',name:'Swisscows',cat:'Privacy',url:'https://swisscows.com/en/web?query=',domain:'swisscows.com'},
+  {id:'qwant',name:'Qwant',cat:'Privacy',url:'https://www.qwant.com/?q=',domain:'qwant.com'},
+  {id:'yandex',name:'Yandex',cat:'International',url:'https://yandex.com/search/?text=',domain:'yandex.com',imgSearch:true},
+  {id:'baidu',name:'Baidu',cat:'International',url:'https://www.baidu.com/s?wd=',domain:'baidu.com'},
+  {id:'karma',name:'Karma',cat:'International',url:'https://www.karmasearch.org/?q=',domain:'karmasearch.org'},
+];
+
+const QUICK_SITES = [
+  {name:'YouTube',url:'https://youtube.com',domain:'youtube.com',emoji:'▶'},
+  {name:'Reddit',url:'https://reddit.com',domain:'reddit.com',emoji:'📋'},
+  {name:'Twitter/X',url:'https://x.com',domain:'x.com',emoji:'𝕏'},
+  {name:'Instagram',url:'https://instagram.com',domain:'instagram.com',emoji:'📷'},
+  {name:'GitHub',url:'https://github.com',domain:'github.com',emoji:'🐙'},
+  {name:'Wikipedia',url:'https://wikipedia.org',domain:'wikipedia.org',emoji:'📖'},
+  {name:'Netflix',url:'https://netflix.com',domain:'netflix.com',emoji:'🎬'},
+  {name:'Amazon',url:'https://amazon.com',domain:'amazon.com',emoji:'🛍️'},
+  {name:'Gmail',url:'https://mail.google.com',domain:'mail.google.com',emoji:'📧'},
+  {name:'Spotify',url:'https://spotify.com',domain:'spotify.com',emoji:'🎵'},
+  {name:'LinkedIn',url:'https://linkedin.com',domain:'linkedin.com',emoji:'💼'},
+  {name:'Discord',url:'https://discord.com',domain:'discord.com',emoji:'💬'},
+  {name:'TikTok',url:'https://tiktok.com',domain:'tiktok.com',emoji:'🎭'},
+  {name:'Twitch',url:'https://twitch.tv',domain:'twitch.tv',emoji:'🎮'},
+  {name:'Drive',url:'https://drive.google.com',domain:'drive.google.com',emoji:'☁️'},
+];
+
+const DEFAULT_WAFFLE_APPS = [
+  {id:'gmail',name:'Gmail',url:'https://mail.google.com',domain:'mail.google.com'},
+  {id:'youtube',name:'YouTube',url:'https://youtube.com',domain:'youtube.com'},
+  {id:'maps',name:'Maps',url:'https://maps.google.com',domain:'maps.google.com'},
+  {id:'drive',name:'Drive',url:'https://drive.google.com',domain:'drive.google.com'},
+  {id:'docs',name:'Docs',url:'https://docs.google.com',domain:'docs.google.com'},
+  {id:'translate',name:'Translate',url:'https://translate.google.com',domain:'translate.google.com'},
+  {id:'reddit',name:'Reddit',url:'https://reddit.com',domain:'reddit.com'},
+  {id:'github',name:'GitHub',url:'https://github.com',domain:'github.com'},
+  {id:'netflix',name:'Netflix',url:'https://netflix.com',domain:'netflix.com'},
+  {id:'spotify',name:'Spotify',url:'https://spotify.com',domain:'spotify.com'},
+  {id:'twitter',name:'Twitter/X',url:'https://x.com',domain:'x.com'},
+  {id:'discord',name:'Discord',url:'https://discord.com',domain:'discord.com'},
+];
+
+const DEFAULT_BOOKMARKS = [
+  {id:1,title:'Google',url:'https://google.com',domain:'google.com',category:'General'},
+  {id:2,title:'GitHub',url:'https://github.com',domain:'github.com',category:'Work'},
+  {id:3,title:'YouTube',url:'https://youtube.com',domain:'youtube.com',category:'Entertainment'},
+  {id:4,title:'Twitter/X',url:'https://x.com',domain:'x.com',category:'Social'},
+];
+
+/* ===================================================================
+   STATE MANAGEMENT
+=================================================================== */
+const DEFAULT_STATE = {
+  settings:{
+    name:'User',avatar:null,background:'aurora',wallpaperUrl:'',
+    darkMode:true,glassEffect:true,theme:'cyber',
+    clockMode:'analog',format24:false,showSeconds:true,
+    enabledEngines:ENGINES.map(e=>e.id),
+    activeEngine:'google',
+    bmCategories:['General','Work','Social','Entertainment'],
+    soundEnabled:true,soundTheme:'cyber',
+    weatherAuto:true,weatherCity:'',weatherUnit:'C',
+  },
+  bookmarks:[...DEFAULT_BOOKMARKS],
+  waffleApps:[...DEFAULT_WAFFLE_APPS],
+};
+
+let STATE = (() => {
+  try { const s = JSON.parse(localStorage.getItem('nexus_v3')); return s || JSON.parse(JSON.stringify(DEFAULT_STATE)); }
+  catch(e) { return JSON.parse(JSON.stringify(DEFAULT_STATE)); }
+})();
+function save() { try { localStorage.setItem('nexus_v3', JSON.stringify(STATE)); } catch(e){} }
+
+function faviconUrl(domain) { return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`; }
+function getEngineById(id) { return ENGINES.find(e=>e.id===id) || ENGINES[0]; }
+
+/* ===================================================================
+   TOAST
+=================================================================== */
+const Toast = {
+  show(msg, type='info', dur=2800) {
+    const tc = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.textContent = msg;
+    tc.appendChild(t);
+    requestAnimationFrame(()=>{ requestAnimationFrame(()=>t.classList.add('show')); });
+    setTimeout(()=>{ t.classList.remove('show'); setTimeout(()=>t.remove(), 400); }, dur);
+  }
+};
+
+/* ===================================================================
+   SOUND SYSTEM
+=================================================================== */
+const Sound = {
+  ctx: null,
+  getCtx() {
+    if (!this.ctx || this.ctx.state==='closed') this.ctx = new (window.AudioContext||window.webkitAudioContext)();
+    if (this.ctx.state==='suspended') this.ctx.resume();
+    return this.ctx;
+  },
+  play(name) {
+    if (!STATE.settings.soundEnabled) return;
+    try { this[`_${name}`]?.(); } catch(e){}
+  },
+  _beep(freq, dur, vol=0.2, type='sine', detune=0) {
+    const ctx = this.getCtx(); const g = ctx.createGain(); const o = ctx.createOscillator();
+    o.type=type; o.frequency.value=freq; o.detune.value=detune;
+    o.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(vol,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+dur);
+    o.start(); o.stop(ctx.currentTime+dur);
+  },
+  _click() {
+    const t = STATE.settings.soundTheme;
+    if(t==='cyber') { this._beep(900,0.06,0.12,'square'); }
+    else if(t==='nature') { this._beep(1200,0.08,0.1,'sine'); }
+    else if(t==='retro') { this._beep(440,0.05,0.15,'square',0); }
+    else { this._beep(1500,0.07,0.1,'sine'); }
+  },
+  _search() {
+    const ctx = this.getCtx(); const g = ctx.createGain();
+    const o = ctx.createOscillator(); o.type='sine';
+    o.frequency.setValueAtTime(400,ctx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(900,ctx.currentTime+0.15);
+    o.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.18,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.2);
+    o.start(); o.stop(ctx.currentTime+0.2);
+  },
+  _open() {
+    [0,0.05,0.1].forEach((t,i)=>{
+      setTimeout(()=>this._beep(400+i*200,0.12,0.1,'sine'), t*1000);
+    });
+  },
+  _success() {
+    [0,0.08,0.16].forEach((t,i)=>{
+      setTimeout(()=>this._beep([523,659,784][i],0.15,0.12,'sine'), t*1000);
+    });
+  },
+  _fun() {
+    const notes=[523,659,784,1047,784,659,523];
+    notes.forEach((n,i)=>{ setTimeout(()=>this._beep(n,0.1,0.15,'triangle'),i*80); });
+  },
+  _error() { this._beep(200,0.3,0.15,'sawtooth'); },
+};
+
+/* ===================================================================
+   CUSTOM CURSOR
+=================================================================== */
+const Cursor = {
+  ring: null, dot: null, rx:0, ry:0, tx:0, ty:0,
+  init() {
+    this.ring = document.getElementById('cursor-ring');
+    this.dot = document.getElementById('cursor-dot');
+    document.addEventListener('mousemove', e => {
+      this.tx = e.clientX; this.ty = e.clientY;
+      this.dot.style.left = e.clientX+'px'; this.dot.style.top = e.clientY+'px';
+    });
+    document.addEventListener('mousedown', ()=>{ document.body.classList.add('cursor-click'); Sound.play('click'); });
+    document.addEventListener('mouseup', ()=>{ document.body.classList.remove('cursor-click'); });
+    document.querySelectorAll('button,a,[onclick]').forEach(el=>{
+      el.addEventListener('mouseenter', ()=>document.body.classList.add('cursor-hover'));
+      el.addEventListener('mouseleave', ()=>document.body.classList.remove('cursor-hover'));
+    });
+    this.animate();
+  },
+  animate() {
+    this.rx += (this.tx - this.rx) * 0.15;
+    this.ry += (this.ty - this.ry) * 0.15;
+    this.ring.style.left = this.rx+'px'; this.ring.style.top = this.ry+'px';
+    requestAnimationFrame(()=>this.animate());
+  }
+};
+
+/* ===================================================================
+   BACKGROUND PARTICLES
+=================================================================== */
+const Particles = {
+  canvas:null, ctx:null, particles:[],
+  init() {
+    this.canvas = document.getElementById('bg-canvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.resize();
+    window.addEventListener('resize', ()=>this.resize());
+    this.spawn();
+    this.draw();
+  },
+  resize() { this.canvas.width=innerWidth; this.canvas.height=innerHeight; },
+  spawn() {
+    for(let i=0;i<60;i++) this.particles.push(this.newP());
+  },
+  newP() {
+    return { x:Math.random()*innerWidth, y:Math.random()*innerHeight,
+      vx:(Math.random()-0.5)*0.3, vy:(Math.random()-0.5)*0.3,
+      r:Math.random()*1.5+0.3, a:Math.random(), fade:Math.random()*0.008+0.002 };
+  },
+  draw() {
+    const c=this.ctx; c.clearRect(0,0,this.canvas.width,this.canvas.height);
+    const col = STATE.settings.theme==='purple'?'155,93,229':STATE.settings.theme==='pink'?'247,37,133':STATE.settings.theme==='gold'?'255,214,10':'0,245,212';
+    this.particles.forEach(p=>{
+      p.x+=p.vx; p.y+=p.vy; p.a+=p.fade;
+      if(p.a>=1||p.a<=0) p.fade*=-1;
+      if(p.x<0||p.x>innerWidth||p.y<0||p.y>innerHeight) { Object.assign(p,this.newP()); }
+      c.beginPath(); c.arc(p.x,p.y,p.r,0,Math.PI*2);
+      c.fillStyle=`rgba(${col},${p.a*0.6})`; c.fill();
+    });
+    requestAnimationFrame(()=>this.draw());
+  }
+};
+
+/* ===================================================================
+   CLOCK
+=================================================================== */
+const Clock = {
+  canvas:null, ctx:null, interval:null,
+  init() {
+    this.canvas = document.getElementById('analog-clock');
+    this.ctx = this.canvas.getContext('2d');
+    this.applyMode();
+    this.tick();
+    setInterval(()=>this.tick(), 1000);
+  },
+  toggle() {
+    Sound.play('click');
+    const modes=['analog','digital'];
+    const ci = modes.indexOf(STATE.settings.clockMode);
+    STATE.settings.clockMode = modes[(ci+1)%modes.length];
+    save();
+    this.applyMode();
+    const sel = document.getElementById('clock-mode-select');
+    if(sel) sel.value=STATE.settings.clockMode;
+  },
+  applyMode() {
+    const isAnalog = STATE.settings.clockMode==='analog';
+    document.getElementById('analog-clock-wrap').style.display = isAnalog?'block':'none';
+    document.getElementById('digital-clock').style.display = isAnalog?'none':'block';
+  },
+  tick() {
+    const now = new Date();
+    this.drawAnalog(now);
+    this.drawDigital(now);
+    this.drawDate(now);
+    document.getElementById('footer-time2').textContent = this.formatTime(now,true);
+  },
+  formatTime(d, force24=false) {
+    const use24 = force24 || STATE.settings.format24;
+    const showSec = STATE.settings.showSeconds;
+    let h=d.getHours(), m=d.getMinutes(), s=d.getSeconds(), ampm='';
+    if(!use24) { ampm=' '+(h>=12?'PM':'AM'); h=h%12||12; }
+    const pad=n=>String(n).padStart(2,'0');
+    return pad(h)+':'+pad(m)+(showSec?':'+pad(s):'')+ampm;
+  },
+  drawDigital(d) {
+    document.getElementById('digital-clock').textContent = this.formatTime(d);
+  },
+  drawDate(d) {
+    const days=['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];
+    const months=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+    document.getElementById('clock-date').textContent =
+      `${days[d.getDay()]}, ${months[d.getMonth()]} ${String(d.getDate()).padStart(2,'0')} ${d.getFullYear()}`;
+  },
+  drawAnalog(now) {
+    const c=this.ctx, W=160, cx=80, cy=80, R=74;
+    c.clearRect(0,0,W,W);
+    // Outer glow ring
+    const g=c.createRadialGradient(cx,cy,R-6,cx,cy,R+2);
+    const col = STATE.settings.theme==='purple'?'155,93,229':STATE.settings.theme==='pink'?'247,37,133':STATE.settings.theme==='gold'?'255,214,10':'0,245,212';
+    g.addColorStop(0,`rgba(${col},0.3)`); g.addColorStop(1,'transparent');
+    c.beginPath(); c.arc(cx,cy,R,0,2*Math.PI);
+    c.strokeStyle=g; c.lineWidth=8; c.stroke();
+    // Face
+    c.beginPath(); c.arc(cx,cy,R-4,0,2*Math.PI);
+    c.fillStyle='rgba(5,8,16,0.85)'; c.fill();
+    c.strokeStyle=`rgba(${col},0.4)`; c.lineWidth=1.5; c.stroke();
+    // Hour marks
+    for(let i=0;i<12;i++){
+      const a=i*Math.PI/6; const big=i%3===0;
+      const r1=R-8; const r2=R-(big?18:12);
+      c.beginPath();
+      c.moveTo(cx+r1*Math.sin(a), cy-r1*Math.cos(a));
+      c.lineTo(cx+r2*Math.sin(a), cy-r2*Math.cos(a));
+      c.strokeStyle=big?`rgba(${col},0.9)`:`rgba(${col},0.4)`;
+      c.lineWidth=big?2:1; c.stroke();
+    }
+    // Numbers for main positions
+    c.textAlign='center'; c.textBaseline='middle';
+    c.font='bold 11px Orbitron,monospace';
+    c.fillStyle=`rgba(${col},0.7)`;
+    [12,3,6,9].forEach((n,i)=>{
+      const a=(i-1)*Math.PI/2;
+      c.fillText(n, cx+(R-26)*Math.sin(a), cy-(R-26)*Math.cos(a));
+    });
+    const h=now.getHours()%12+now.getMinutes()/60;
+    const m=now.getMinutes()+now.getSeconds()/60;
+    const s=now.getSeconds();
+    // Hour hand
+    this.drawHand(c,cx,cy,h*Math.PI/6,40,5,`rgba(${col},0.9)`);
+    // Minute hand
+    this.drawHand(c,cx,cy,m*Math.PI/30,58,3,`rgba(${col},0.7)`);
+    // Second hand
+    if(STATE.settings.showSeconds) this.drawHand(c,cx,cy,s*Math.PI/30,62,1.5,'rgba(247,37,133,0.9)');
+    // Center dot
+    c.beginPath(); c.arc(cx,cy,4,0,2*Math.PI);
+    c.fillStyle=`rgb(${col})`; c.fill();
+    c.beginPath(); c.arc(cx,cy,2,0,2*Math.PI);
+    c.fillStyle='rgba(5,8,16,0.9)'; c.fill();
+  },
+  drawHand(c,cx,cy,angle,len,width,color) {
+    c.beginPath();
+    c.moveTo(cx, cy);
+    c.lineTo(cx+len*Math.sin(angle), cy-len*Math.cos(angle));
+    c.strokeStyle=color; c.lineWidth=width; c.lineCap='round'; c.stroke();
+  }
+};
+
+/* ===================================================================
+   QUOTES
+=================================================================== */
+const Quotes = {
+  current: 0,
+  init() { this.current=Math.floor(Math.random()*QUOTES.length); this.show(); },
+  refresh() {
+    Sound.play('click');
+    const el=document.getElementById('quote-text');
+    el.style.opacity=0;
+    setTimeout(()=>{ this.current=(this.current+1)%QUOTES.length; this.show(); el.style.opacity=1; }, 350);
+  },
+  show() {
+    const q=QUOTES[this.current];
+    document.getElementById('quote-text').textContent=`"${q.text}"`;
+    document.getElementById('quote-author').textContent=`— ${q.author}`;
+  }
+};
+
+/* ===================================================================
+   WEATHER
+=================================================================== */
+const Weather = {
+  lat:null, lon:null,
+  WMO:{0:'☀️ Clear',1:'🌤️ Mainly Clear',2:'⛅ Partly Cloudy',3:'☁️ Overcast',
+    45:'🌫️ Foggy',48:'🌫️ Fog',51:'🌦️ Light Drizzle',53:'🌧️ Drizzle',55:'🌧️ Heavy Drizzle',
+    61:'🌧️ Light Rain',63:'🌧️ Rain',65:'🌧️ Heavy Rain',71:'🌨️ Light Snow',73:'🌨️ Snow',
+    75:'❄️ Heavy Snow',80:'🌦️ Rain Showers',81:'🌧️ Showers',82:'⛈️ Heavy Showers',
+    95:'⛈️ Thunderstorm',96:'⛈️ Thunder+Hail',99:'⛈️ Severe Thunderstorm'},
+  init() {
+    document.getElementById('weather-widget').addEventListener('click', ()=>{ Sound.play('click'); this.load(); });
+    document.getElementById('weather-btn-refresh').addEventListener('click', e=>{ e.stopPropagation(); this.load(); });
+    this.load();
+  },
+  load() {
+    if(STATE.settings.weatherAuto) this.autoDetect();
+    else if(STATE.settings.weatherCity) this.searchCity(STATE.settings.weatherCity);
+  },
+  autoDetect() {
+    document.getElementById('weather-loc').textContent='DETECTING...';
+    if(navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos=>{ this.lat=pos.coords.latitude; this.lon=pos.coords.longitude; this.fetchWeather(); this.reverseGeo(); },
+        ()=>{ this.searchCity('Guwahati'); }
+      );
+    } else { this.searchCity('Guwahati'); }
+  },
+  async searchCity(city) {
+    city = city || document.getElementById('weather-loc-input').value.trim();
+    if(!city) return;
+    STATE.settings.weatherCity=city; save();
+    try {
+      const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&format=json`);
+      const d = await r.json();
+      if(d.results?.[0]) {
+        this.lat=d.results[0].latitude; this.lon=d.results[0].longitude;
+        document.getElementById('weather-loc').textContent=(d.results[0].name+', '+(d.results[0].country_code||'')).toUpperCase();
+        this.fetchWeather();
+      }
+    } catch(e) {}
+  },
+  async reverseGeo() {
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${this.lat}&lon=${this.lon}&format=json`);
+      const d = await r.json();
+      const city = d.address?.city||d.address?.town||d.address?.village||d.address?.county||'Unknown';
+      const cc = d.address?.country_code?.toUpperCase()||'';
+      document.getElementById('weather-loc').textContent=`${city}, ${cc}`;
+    } catch(e){}
+  },
+  async fetchWeather() {
+    if(!this.lat||!this.lon) return;
+    try {
+      const unit = STATE.settings.weatherUnit==='F'?'fahrenheit':'celsius';
+      const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${this.lat}&longitude=${this.lon}&current_weather=true&hourly=relativehumidity_2m,windspeed_10m&temperature_unit=${unit}&timezone=auto`);
+      const d = await r.json();
+      const cw = d.current_weather;
+      const wmo = this.WMO[cw.weathercode]||'🌡️ Unknown';
+      const parts = wmo.split(' ');
+      const icon = parts[0]; const desc = parts.slice(1).join(' ');
+      document.getElementById('weather-icon').textContent=icon;
+      document.getElementById('weather-temp').textContent=`${Math.round(cw.temperature)}°${STATE.settings.weatherUnit}`;
+      document.getElementById('weather-desc').textContent=desc;
+      const windKph = Math.round(cw.windspeed);
+      document.getElementById('weather-extra').textContent=`💨 ${windKph} km/h`;
+    } catch(e){}
+  }
+};
+
+/* ===================================================================
+   SEARCH ENGINE
+=================================================================== */
+const Search = {
+  uploadedImage: null,
+  panelOpen: false,
+  searchHistory: [],
+
+  init() {
+    this.loadHistory();
+    this.setEngine(STATE.settings.activeEngine||'google');
+    this.buildEnginePanel();
+    this.buildQuickSearch();
+    document.getElementById('search-input').addEventListener('focus', ()=>this.showHistory());
+    document.addEventListener('click', e=>{
+      if(!document.getElementById('search-bar-wrap').contains(e.target)) {
+        this.closeEnginePanel(); this.closeSuggestions();
+      }
+    });
+  },
+
+  setEngine(id) {
+    const eng = getEngineById(id);
+    STATE.settings.activeEngine=id; save();
+    const icon = document.getElementById('engine-icon');
+    icon.src = faviconUrl(eng.domain);
+    icon.style.display='inline';
+    document.getElementById('engine-name-label').textContent=eng.name;
+    // Highlight in panel
+    document.querySelectorAll('.engine-item').forEach(el=>{
+      el.classList.toggle('active', el.dataset.id===id);
+    });
+    Sound.play('click');
+  },
+
+  buildEnginePanel() {
+    const panel = document.getElementById('engine-panel');
+    const cats = [...new Set(ENGINES.map(e=>e.cat))];
+    panel.innerHTML = cats.map(cat=>{
+      const engines = ENGINES.filter(e=>e.cat===cat && STATE.settings.enabledEngines.includes(e.id));
+      if(!engines.length) return '';
+      return `<div class="engine-category">
+        <div class="engine-cat-title">${cat}</div>
+        <div class="engine-grid">
+          ${engines.map(e=>`
+            <div class="engine-item${e.id===STATE.settings.activeEngine?' active':''}" data-id="${e.id}" onclick="Search.setEngine('${e.id}');Search.closeEnginePanel();" title="${e.name}">
+              <img src="${faviconUrl(e.domain)}" alt="${e.name}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+              <div class="e-placeholder" style="display:none">${e.name[0]}</div>
+              <span>${e.name}</span>
+            </div>`).join('')}
+        </div>
+      </div>`;
+    }).join('');
+  },
+
+  buildQuickSearch() {
+    const grid = document.getElementById('qs-grid');
+    grid.innerHTML = QUICK_SITES.map(s=>`
+      <a class="qs-item" href="${s.url}" target="_blank" title="${s.name}">
+        <img src="${faviconUrl(s.domain)}" alt="${s.name}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <div class="qs-placeholder" style="display:none">${s.emoji||s.name[0]}</div>
+        <span>${s.name}</span>
+      </a>`).join('');
+  },
+
+  toggleEnginePanel() {
+    this.panelOpen = !this.panelOpen;
+    const panel = document.getElementById('engine-panel');
+    panel.classList.toggle('open', this.panelOpen);
+    document.getElementById('engine-arrow').textContent = this.panelOpen?'▴':'▾';
+    if(this.panelOpen) Sound.play('open');
+  },
+
+  closeEnginePanel() {
+    this.panelOpen=false;
+    document.getElementById('engine-panel').classList.remove('open');
+    document.getElementById('engine-arrow').textContent='▾';
+  },
+
+  onInput(val) {
+    if(val.length>1) this.showSuggestions(val);
+    else this.closeSuggestions();
+  },
+
+  showSuggestions(q) {
+    const hist = this.searchHistory.filter(h=>h.toLowerCase().includes(q.toLowerCase())).slice(0,5);
+    if(!hist.length) { this.closeSuggestions(); return; }
+    const el = document.getElementById('search-suggestions');
+    el.innerHTML = hist.map(h=>`<div class="suggestion-item" onclick="document.getElementById('search-input').value='${h.replace(/'/g,"\\'")}';Search.doSearch()"><span class="suggestion-icon">🕐</span>${h}</div>`).join('');
+    el.classList.add('show');
+  },
+
+  closeSuggestions() { document.getElementById('search-suggestions').classList.remove('show'); },
+
+  onKeyDown(e) {
+    if(e.key==='Enter') { this.doSearch(); }
+    if(e.key==='Escape') { this.closeEnginePanel(); this.closeSuggestions(); }
+  },
+
+  doSearch() {
+    const q = document.getElementById('search-input').value.trim();
+    if(!q && !this.uploadedImage) return;
+    const eng = getEngineById(STATE.settings.activeEngine);
+    Sound.play('search');
+
+    if(this.uploadedImage && q==='') {
+      this.doImageSearch(eng); return;
+    }
+
+    if(q) {
+      this.addHistory(q);
+      // For AI engines that don't support query URL
+      const noQueryEngines=['grok','deepseek','chatgpt','gemini','copilot'];
+      if(noQueryEngines.includes(eng.id)) {
+        const urls={grok:'https://grok.x.com/',deepseek:'https://chat.deepseek.com/',
+          chatgpt:'https://chatgpt.com/',gemini:'https://gemini.google.com/app',
+          copilot:'https://copilot.microsoft.com/'};
+        window.open(urls[eng.id]||eng.url, '_blank');
+        Toast.show(`Opening ${eng.name} — paste your query there!`, 'info');
+      } else {
+        window.open(eng.url + encodeURIComponent(q), '_blank');
+      }
+    }
+    if(this.uploadedImage && q) { this.doImageSearch(eng); }
+    this.closeSuggestions();
+  },
+
+  doImageSearch(eng) {
+    const imgUrls={
+      google:'https://lens.google.com/upload',
+      bing:'https://www.bing.com/images/search?view=detailv2&iss=sbiupload',
+      yandex:'https://yandex.com/images/search?rpt=imageview',
+    };
+    if(imgUrls[eng.id]) { window.open(imgUrls[eng.id],'_blank'); }
+    else { window.open('https://lens.google.com/upload','_blank'); }
+    Toast.show('Image search opened — upload your image there!', 'info');
+  },
+
+  handleImageUpload(input) {
+    const file = input.files[0];
+    if(!file) return;
+    this.uploadedImage = file;
+    const url = URL.createObjectURL(file);
+    document.getElementById('img-preview-thumb').src=url; document.getElementById('img-preview-thumb').style.display='block';
+    document.getElementById('img-banner-preview').src=url; document.getElementById('img-search-banner').classList.add('show');
+    const eng = getEngineById(STATE.settings.activeEngine);
+    const supported=['google','bing','yandex'];
+    document.getElementById('img-search-note').textContent = supported.includes(eng.id)
+      ? `${eng.name} supports image search` : 'Will use Google Lens';
+    Toast.show('Image loaded! Click Search to find it online.', 'success');
+  },
+
+  clearImage() {
+    this.uploadedImage=null;
+    document.getElementById('img-preview-thumb').style.display='none';
+    document.getElementById('img-search-banner').classList.remove('show');
+    document.getElementById('img-upload').value='';
+    Sound.play('click');
+  },
+
+  startVoice() {
+    if(!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      Toast.show('Voice search not supported in this browser', 'error'); return;
+    }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const r = new SR();
+    r.lang='en-US'; r.start();
+    Toast.show('🎤 Listening...', 'info', 5000);
+    r.onresult = e => { document.getElementById('search-input').value = e.results[0][0].transcript; };
+    r.onerror = ()=>Toast.show('Voice recognition failed', 'error');
+  },
+
+  addHistory(q) { this.searchHistory = [q,...this.searchHistory.filter(h=>h!==q)].slice(0,20); try{localStorage.setItem('nexus_hist',JSON.stringify(this.searchHistory));}catch(e){} },
+  loadHistory() { try{this.searchHistory=JSON.parse(localStorage.getItem('nexus_hist')||'[]');}catch(e){this.searchHistory=[];} },
+};
+
+/* ===================================================================
+   WAFFLE MENU
+=================================================================== */
+const WaffleMenu = {
+  init() {
+    this.render();
+    document.getElementById('waffle-btn').addEventListener('click', ()=>this.toggle());
+    document.getElementById('waffle-add-btn').addEventListener('click', ()=>UI.openAddApp());
+    document.addEventListener('click', e=>{
+      if(!document.getElementById('waffle-panel').contains(e.target) && e.target!==document.getElementById('waffle-btn')) {
+        this.close();
+      }
+    });
+  },
+
+  toggle() {
+    const panel=document.getElementById('waffle-panel');
+    const isOpen=panel.classList.contains('open');
+    if(isOpen) this.close(); else { panel.classList.add('open'); document.getElementById('waffle-btn').classList.add('active'); Sound.play('open'); }
+    UI.closeProfile();
+  },
+
+  close() { document.getElementById('waffle-panel').classList.remove('open'); document.getElementById('waffle-btn').classList.remove('active'); },
+
+  render() {
+    const grid=document.getElementById('waffle-grid');
+    grid.innerHTML = STATE.waffleApps.map(app=>`
+      <div class="waffle-app" onclick="window.open('${app.url}','_blank');Sound.play('click')">
+        <button class="waffle-app-remove" onclick="event.stopPropagation();WaffleMenu.removeApp('${app.id}')" title="Remove">✕</button>
+        <img src="${faviconUrl(app.domain)}" alt="${app.name}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <div class="waffle-app-icon-placeholder" style="display:none">${app.name[0]}</div>
+        <span>${app.name}</span>
+      </div>`).join('')
+    + `<div class="waffle-app waffle-app-add" onclick="UI.openAddApp()">
+        <div class="waffle-app-icon-placeholder">+</div>
+        <span>Add App</span>
+      </div>`;
+  },
+
+  addApp() {
+    const name=document.getElementById('app-name-input').value.trim();
+    const url=document.getElementById('app-url-input').value.trim();
+    if(!name||!url) { Toast.show('Please fill all fields','error'); return; }
+    let domain='';
+    try { domain=new URL(url).hostname.replace('www.',''); } catch(e) { Toast.show('Invalid URL','error'); return; }
+    const id='app_'+Date.now();
+    STATE.waffleApps.push({id,name,url,domain}); save();
+    this.render(); UI.closeAddApp();
+    Toast.show(`${name} added to launcher!`,'success'); Sound.play('success');
+  },
+
+  removeApp(id) {
+    STATE.waffleApps=STATE.waffleApps.filter(a=>a.id!==id); save();
+    this.render(); Sound.play('click');
+    Toast.show('App removed','info');
+  }
+};
+
+/* ===================================================================
+   BOOKMARK HUB
+=================================================================== */
+const BookmarkHub = {
+  activeCategory:'all',
+  expanded:false,
+  bmId:1,
+
+  init() {
+    this.bmId = Math.max(0,...STATE.bookmarks.map(b=>b.id||0))+1;
+    this.renderCats();
+    this.renderItems();
+    this.updateCount();
+  },
+
+  toggle() {
+    this.expanded=!this.expanded;
+    Sound.play('click');
+    document.getElementById('bookmark-hub').classList.toggle('expanded',this.expanded);
+  },
+
+  renderCats() {
+    const cats=['all',...STATE.settings.bmCategories];
+    document.getElementById('hub-cats').innerHTML=cats.map(c=>`
+      <button class="hub-cat-btn${c===this.activeCategory?' active':''}" onclick="BookmarkHub.filterCat('${c}')">
+        ${c==='all'?'📌 All':c}
+      </button>`).join('');
+    // Also update bm-cat-select in add modal
+    const sel=document.getElementById('bm-cat-select');
+    if(sel) sel.innerHTML=STATE.settings.bmCategories.map(c=>`<option value="${c}">${c}</option>`).join('');
+  },
+
+  filterCat(cat) { this.activeCategory=cat; Sound.play('click'); this.renderCats(); this.renderItems(); },
+
+  renderItems() {
+    const items = this.activeCategory==='all' ? STATE.bookmarks : STATE.bookmarks.filter(b=>b.category===this.activeCategory);
+    const container=document.getElementById('hub-items');
+    if(!items.length) { container.innerHTML='<div class="hub-empty">No bookmarks here yet</div>'; return; }
+    container.innerHTML=items.map(b=>`
+      <a class="hub-item" href="${b.url}" target="_blank" title="${b.title}">
+        <img src="${faviconUrl(b.domain||b.url)}" alt="${b.title}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <div class="bm-placeholder" style="display:none">${b.title[0]}</div>
+        ${b.title}
+        <button class="hub-item-remove" onclick="event.preventDefault();event.stopPropagation();BookmarkHub.remove(${b.id})">✕</button>
+      </a>`).join('');
+  },
+
+  updateCount() {
+    document.getElementById('hub-count').textContent=STATE.bookmarks.length;
+  },
+
+  addBookmark() {
+    const title=document.getElementById('bm-title-input').value.trim();
+    const url=document.getElementById('bm-url-input').value.trim();
+    const cat=document.getElementById('bm-cat-select').value;
+    if(!title||!url) { Toast.show('Please fill all fields','error'); return; }
+    let domain='';
+    try { domain=new URL(url).hostname.replace('www.',''); } catch(e){}
+    STATE.bookmarks.push({id:this.bmId++,title,url,domain,category:cat}); save();
+    this.renderItems(); this.updateCount(); UI.closeAddBm();
+    Toast.show(`"${title}" bookmarked!`,'success'); Sound.play('success');
+  },
+
+  remove(id) {
+    STATE.bookmarks=STATE.bookmarks.filter(b=>b.id!==id); save();
+    this.renderItems(); this.updateCount(); Sound.play('click');
+    Toast.show('Bookmark removed','info');
+  },
+
+  exportJSON() {
+    const data=JSON.stringify({bookmarks:STATE.bookmarks,waffleApps:STATE.waffleApps},null,2);
+    const blob=new Blob([data],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='nexus-bookmarks.json'; a.click();
+    Toast.show('Bookmarks exported!','success'); Sound.play('success');
+  },
+
+  importJSON(input) {
+    const file=input.files[0]; if(!file) return;
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try {
+        const d=JSON.parse(e.target.result);
+        if(d.bookmarks) STATE.bookmarks=[...STATE.bookmarks,...d.bookmarks];
+        if(d.waffleApps) STATE.waffleApps=[...STATE.waffleApps,...d.waffleApps];
+        save(); this.renderItems(); this.updateCount(); WaffleMenu.render();
+        Toast.show('Imported successfully!','success'); Sound.play('success');
+      } catch(err) { Toast.show('Invalid JSON file','error'); }
+    };
+    reader.readAsText(file);
+  }
+};
+
+/* ===================================================================
+   SETTINGS
+=================================================================== */
+const Sett = {
+  init() {
+    // Tabs
+    document.querySelectorAll('.s-tab').forEach(tab=>{
+      tab.addEventListener('click',()=>{ Sound.play('click'); this.switchTab(tab.dataset.tab); });
+    });
+    // Settings close on overlay click
+    document.getElementById('settings-modal').addEventListener('click', e=>{
+      if(e.target===document.getElementById('settings-modal')) UI.closeSettings();
+    });
+    // Avatar upload
+    document.getElementById('avatar-upload').addEventListener('change', e=>{
+      const file=e.target.files[0]; if(!file) return;
+      const r=new FileReader(); r.onload=ev=>{ STATE.settings.avatar=ev.target.result; save(); this.applyProfile(); }; r.readAsDataURL(file);
+    });
+    // Wallpaper options
+    document.querySelectorAll('.wallpaper-opt').forEach(el=>{
+      el.addEventListener('click',()=>{ Sound.play('click'); document.querySelectorAll('.wallpaper-opt').forEach(o=>o.classList.remove('active')); el.classList.add('active'); this.applyBg(el.dataset.wp); });
+    });
+    this.applyAll();
+  },
+
+  switchTab(tab) {
+    document.querySelectorAll('.s-tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
+    document.querySelectorAll('.settings-panel').forEach(p=>p.classList.toggle('active',p.id===`panel-${tab}`));
+    if(tab==='engines') this.renderEnginesSettings();
+    if(tab==='bookmarks') this.renderBmCategories();
+    if(tab==='sound') {
+      document.querySelectorAll('.sound-theme-btn').forEach(b=>b.classList.toggle('active',b.dataset.theme===STATE.settings.soundTheme));
+    }
+  },
+
+  applyAll() {
+    this.applyProfile();
+    this.applyTheme();
+    this.applyBgPreset(STATE.settings.background||'aurora');
+    if(STATE.settings.wallpaperUrl) this.applyWallpaperUrl(STATE.settings.wallpaperUrl);
+    document.body.classList.toggle('light-mode',!STATE.settings.darkMode);
+    document.body.classList.toggle('glass-mode',STATE.settings.glassEffect);
+    // Sync toggle states
+    this.syncToggle('toggle-dark','darkMode');
+    this.syncToggle('toggle-glass','glassEffect');
+    this.syncToggle('toggle-24hr','format24');
+    this.syncToggle('toggle-seconds','showSeconds');
+    this.syncToggle('toggle-sound','soundEnabled');
+    this.syncToggle('toggle-auto-loc','weatherAuto');
+    const cs=document.getElementById('clock-mode-select'); if(cs) cs.value=STATE.settings.clockMode;
+    const ts=document.getElementById('theme-select'); if(ts) ts.value=STATE.settings.theme;
+    const tu=document.getElementById('temp-unit-select'); if(tu) tu.value=STATE.settings.weatherUnit;
+    const pi=document.getElementById('profile-name-input'); if(pi) pi.value=STATE.settings.name;
+    const wl=document.getElementById('weather-loc-input'); if(wl) wl.value=STATE.settings.weatherCity;
+    const wu=document.getElementById('wallpaper-url'); if(wu) wu.value=STATE.settings.wallpaperUrl;
+  },
+
+  syncToggle(id, key) {
+    const el=document.getElementById(id); if(!el) return;
+    el.classList.toggle('on', !!STATE.settings[key]);
+  },
+
+  toggle(key, el) {
+    STATE.settings[key]=!STATE.settings[key]; save();
+    el.classList.toggle('on', STATE.settings[key]);
+    Sound.play('click');
+    if(key==='darkMode') document.body.classList.toggle('light-mode',!STATE.settings.darkMode);
+    if(key==='glassEffect') document.body.classList.toggle('glass-mode',STATE.settings.glassEffect);
+    if(key==='soundEnabled') Toast.show(STATE.settings.soundEnabled?'Sound enabled':'Sound disabled','info');
+    if(key==='weatherAuto' && STATE.settings.weatherAuto) Weather.autoDetect();
+  },
+
+  applyProfile() {
+    const n=STATE.settings.name||'User'; const init=n[0].toUpperCase();
+    ['profile-initial','profile-panel-initial','settings-avatar-initial'].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.textContent=init;
+    });
+    document.getElementById('profile-panel-name').textContent=n.toUpperCase();
+    // Apply avatar image if present
+    if(STATE.settings.avatar) {
+      ['profile-avatar-header','profile-avatar-panel','settings-avatar'].forEach(id=>{
+        const el=document.getElementById(id); if(!el) return;
+        el.innerHTML=`<img src="${STATE.settings.avatar}" alt="Avatar">`;
+      });
+    }
+  },
+
+  saveProfile() {
+    const n=document.getElementById('profile-name-input').value.trim()||'User';
+    STATE.settings.name=n; save(); this.applyProfile();
+    Toast.show('Profile saved!','success'); Sound.play('success');
+  },
+
+  clearAvatar() {
+    STATE.settings.avatar=null; save(); this.applyProfile();
+    Toast.show('Avatar removed','info');
+  },
+
+  applyBg(preset) {
+    STATE.settings.background=preset; save();
+    this.applyBgPreset(preset);
+    document.querySelectorAll('.wallpaper-opt').forEach(el=>el.classList.toggle('active',el.dataset.wp===preset));
+  },
+
+  applyBgPreset(preset) {
+    const aurora=document.querySelector('.bg-aurora');
+    if(preset==='cyber') { aurora.style.background='radial-gradient(ellipse 50% 60% at 20% 30%, rgba(0,0,80,0.15) 0%, transparent 70%), radial-gradient(ellipse 40% 50% at 80% 70%, rgba(0,80,80,0.08) 0%, transparent 70%)'; }
+    else if(preset==='gradient') { aurora.style.background='radial-gradient(ellipse 60% 50% at 30% 40%, rgba(80,0,120,0.1) 0%, transparent 70%), radial-gradient(ellipse 50% 60% at 70% 60%, rgba(0,20,100,0.12) 0%, transparent 70%)'; }
+    else if(preset==='dark') { aurora.style.background='none'; }
+    else { aurora.style.background=''; } // aurora default (CSS handles it)
+  },
+
+  applyWallpaper() { const url=document.getElementById('wallpaper-url').value.trim(); this.applyWallpaperUrl(url); STATE.settings.wallpaperUrl=url; save(); },
+
+  applyWallpaperUrl(url) {
+    if(!url) return;
+    const isVideo=url.match(/\.(mp4|webm|ogg)$/i);
+    const img=document.getElementById('wallpaper-bg'); const vid=document.getElementById('wallpaper-video');
+    if(isVideo) { vid.src=url; vid.style.display='block'; img.style.display='none'; }
+    else { img.src=url; img.style.display='block'; vid.style.display='none'; }
+  },
+
+  clearWallpaper() {
+    STATE.settings.wallpaperUrl=''; save();
+    document.getElementById('wallpaper-bg').style.display='none';
+    document.getElementById('wallpaper-video').style.display='none';
+    document.getElementById('wallpaper-url').value='';
+    Toast.show('Wallpaper cleared','info');
+  },
+
+  changeTheme(t) {
+    STATE.settings.theme=t; save(); this.applyTheme(); Sound.play('click');
+  },
+
+  applyTheme() {
+    const themes={
+      cyber:'--cyan:#00f5d4;--purple:#9b5de5;--pink:#f72585;--glow-c:0 0 18px rgba(0,245,212,0.5);--glow-p:0 0 18px rgba(155,93,229,0.5);',
+      purple:'--cyan:#b44dff;--purple:#7000ff;--pink:#ff00cc;--glow-c:0 0 18px rgba(180,77,255,0.5);--glow-p:0 0 18px rgba(112,0,255,0.5);',
+      pink:'--cyan:#ff0099;--purple:#cc00ff;--pink:#ff6600;--glow-c:0 0 18px rgba(255,0,153,0.5);--glow-p:0 0 18px rgba(204,0,255,0.5);',
+      gold:'--cyan:#ffd60a;--purple:#ff9500;--pink:#ff4d00;--glow-c:0 0 18px rgba(255,214,10,0.5);--glow-p:0 0 18px rgba(255,149,0,0.5);',
+    };
+    const vars=themes[STATE.settings.theme]||themes.cyber;
+    vars.split(';').filter(Boolean).forEach(pair=>{
+      const [k,v]=pair.split(':'); document.documentElement.style.setProperty(k.trim(),v.trim());
+    });
+  },
+
+  setClockMode(v) { STATE.settings.clockMode=v; save(); Clock.applyMode(); Sound.play('click'); },
+  setTempUnit(v) { STATE.settings.weatherUnit=v; save(); Weather.fetchWeather(); Sound.play('click'); },
+
+  setSoundTheme(t, btn) {
+    STATE.settings.soundTheme=t; save();
+    document.querySelectorAll('.sound-theme-btn').forEach(b=>b.classList.toggle('active',b.dataset.theme===t));
+    Sound.play('fun');
+  },
+
+  renderEnginesSettings() {
+    const grid=document.getElementById('engines-settings-grid');
+    grid.innerHTML=ENGINES.map(e=>`
+      <div class="engine-setting-item">
+        <div class="e-info">
+          <img src="${faviconUrl(e.domain)}" alt="${e.name}" onerror="this.style.display='none'">
+          ${e.name}
+        </div>
+        <div class="toggle ${STATE.settings.enabledEngines.includes(e.id)?'on':''}" onclick="Sett.toggleEngine('${e.id}',this)"></div>
+      </div>`).join('');
+  },
+
+  toggleEngine(id, el) {
+    const idx=STATE.settings.enabledEngines.indexOf(id);
+    if(idx>=0) STATE.settings.enabledEngines.splice(idx,1);
+    else STATE.settings.enabledEngines.push(id);
+    el.classList.toggle('on'); save();
+    Search.buildEnginePanel(); Sound.play('click');
+  },
+
+  renderBmCategories() {
+    const list=document.getElementById('bm-cat-list');
+    list.innerHTML=STATE.settings.bmCategories.map(c=>`
+      <div class="bm-cat-item">
+        <span class="bm-cat-item-name">${c}</span>
+        <button class="bm-cat-del" onclick="Sett.deleteCategory('${c}')">🗑️</button>
+      </div>`).join('');
+  },
+
+  addCategory() {
+    const name=document.getElementById('new-cat-input').value.trim();
+    if(!name) return;
+    if(STATE.settings.bmCategories.includes(name)) { Toast.show('Category already exists','error'); return; }
+    STATE.settings.bmCategories.push(name); save();
+    document.getElementById('new-cat-input').value='';
+    this.renderBmCategories(); BookmarkHub.renderCats();
+    Toast.show(`Category "${name}" added`,'success'); Sound.play('success');
+  },
+
+  deleteCategory(cat) {
+    if(['General','Work','Social','Entertainment'].includes(cat)) { Toast.show('Cannot delete default category','error'); return; }
+    STATE.settings.bmCategories=STATE.settings.bmCategories.filter(c=>c!==cat); save();
+    this.renderBmCategories(); BookmarkHub.renderCats();
+    Toast.show(`Category "${cat}" deleted`,'info');
+  },
+};
+
+/* ===================================================================
+   UI HELPERS
+=================================================================== */
+const UI = {
+  openSettings(tab='profile') {
+    Sound.play('open');
+    document.getElementById('settings-modal').classList.add('open');
+    if(tab) Sett.switchTab(tab);
+    UI.closeProfile(); UI.closeWaffle();
+  },
+  closeSettings() { document.getElementById('settings-modal').classList.remove('open'); Sound.play('click'); },
+  openProfile() {
+    const pp=document.getElementById('profile-panel');
+    const isOpen=pp.classList.contains('open');
+    if(isOpen) this.closeProfile(); else { pp.classList.add('open'); document.getElementById('profile-btn').classList.add('active'); Sound.play('open'); }
+    UI.closeWaffle();
+  },
+  closeProfile() { document.getElementById('profile-panel').classList.remove('open'); document.getElementById('profile-btn').classList.remove('active'); },
+  closeWaffle() { WaffleMenu.close(); },
+  openAddApp() { document.getElementById('add-app-modal').classList.add('open'); document.getElementById('app-name-input').focus(); Sound.play('open'); },
+  closeAddApp() { document.getElementById('add-app-modal').classList.remove('open'); document.getElementById('app-name-input').value=''; document.getElementById('app-url-input').value=''; },
+  openAddBm() { document.getElementById('add-bm-modal').classList.add('open'); document.getElementById('bm-title-input').focus(); Sound.play('open'); BookmarkHub.renderCats(); },
+  closeAddBm() { document.getElementById('add-bm-modal').classList.remove('open'); document.getElementById('bm-title-input').value=''; document.getElementById('bm-url-input').value=''; },
+};
+
+/* ===================================================================
+   FOOTER
+=================================================================== */
+const Footer = {
+  init() {
+    // Timezone
+    const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
+    document.getElementById('footer-tz').textContent=tz||'UTC';
+    // Fetch IP & country
+    fetch('https://ipapi.co/json/')
+      .then(r=>r.json())
+      .then(d=>{
+        document.getElementById('footer-ip').textContent=d.ip||'N/A';
+        document.getElementById('footer-country').textContent=`${d.country_name||'Unknown'} ${d.country_code?'('+d.country_code+')':''}`;
+        const dns = d.org ? d.org.split(' ').slice(1).join(' ') : 'System DNS';
+        document.getElementById('footer-dns').textContent=dns.length>18?dns.substr(0,18)+'…':dns;
+      })
+      .catch(()=>{
+        fetch('https://api.ipify.org?format=json').then(r=>r.json()).then(d=>{ document.getElementById('footer-ip').textContent=d.ip||'N/A'; }).catch(()=>{});
+        document.getElementById('footer-country').textContent='Unknown';
+      });
+  }
+};
+
+/* ===================================================================
+   PROFILE BUTTON
+=================================================================== */
+document.getElementById('profile-btn').addEventListener('click', ()=>UI.openProfile());
+document.addEventListener('click', e=>{
+  if(!document.getElementById('profile-panel').contains(e.target) && e.target!==document.getElementById('profile-btn') && !document.getElementById('profile-btn').contains(e.target)) {
+    UI.closeProfile();
+  }
+  if(!document.getElementById('add-app-modal').contains(e.target) && !document.getElementById('add-app-modal').querySelector('.add-app-box').contains(e.target)) {
+    // handled by overlay click
+  }
+});
+document.getElementById('add-app-modal').addEventListener('click', e=>{ if(e.target===document.getElementById('add-app-modal')) UI.closeAddApp(); });
+document.getElementById('add-bm-modal').addEventListener('click', e=>{ if(e.target===document.getElementById('add-bm-modal')) UI.closeAddBm(); });
+
+/* ===================================================================
+   LOADING SCREEN
+=================================================================== */
+function hideLoading() {
+  setTimeout(()=>{
+    const ls=document.getElementById('loading-screen');
+    ls.classList.add('out');
+    setTimeout(()=>ls.remove(), 700);
+  }, 2200);
+}
+
+/* ===================================================================
+   KEYBOARD SHORTCUTS
+=================================================================== */
+document.addEventListener('keydown', e=>{
+  if(e.key==='/' && !['INPUT','TEXTAREA'].includes(e.target.tagName)) {
+    e.preventDefault(); document.getElementById('search-input').focus();
+  }
+  if(e.key==='Escape') { UI.closeSettings(); UI.closeProfile(); UI.closeWaffle(); UI.closeAddApp(); UI.closeAddBm(); }
+});
+
+/* ===================================================================
+   INIT
+=================================================================== */
+document.addEventListener('DOMContentLoaded', ()=>{
+  Cursor.init();
+  Particles.init();
+  Clock.init();
+  Quotes.init();
+  Search.init();
+  WaffleMenu.init();
+  BookmarkHub.init();
+  Sett.init();
+  Weather.init();
+  Footer.init();
+  hideLoading();
+
+  // Fun Sound on page load (after small delay)
+  setTimeout(()=>{ Sound.play('open'); }, 2500);
+
+  // Animate main elements in
+  document.querySelectorAll('#clock-section, #quote-section, #search-section, #quick-search').forEach((el,i)=>{
+    el.style.opacity='0'; el.style.transform='translateY(20px)';
+    setTimeout(()=>{
+      el.style.transition='opacity 0.6s ease, transform 0.6s ease';
+      el.style.opacity='1'; el.style.transform='none';
+    }, 2300 + i*150);
+  });
+});
+</script>
+</body>
+</html>
